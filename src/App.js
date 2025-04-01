@@ -1,23 +1,24 @@
-import logo from './logo.svg';
-import './App.css';
+import React, { useState } from 'react';
+import AlgorithmSwitch from './components/AlgorithmSwitch';
+import CryptoForm from './components/CryptoForm';
+import { Container } from '@mui/material';
 
 function App() {
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState('AES');
+
   return (
-    <div className="App">
-      <header className="App-header">
-        <img src={logo} className="App-logo" alt="logo" />
-        <p>
-          Edit <code>src/App.js</code> and save to reload.
-        </p>
-        <a
-          className="App-link"
-          href="https://reactjs.org"
-          target="_blank"
-          rel="noopener noreferrer"
-        >
-          Learn React
-        </a>
-      </header>
+    <div id="root">
+      <div id="background-image"></div>
+
+      <Container sx={{
+        marginTop: '20px',
+      }}>
+        <AlgorithmSwitch
+          selectedAlgorithm={selectedAlgorithm}
+          onAlgorithmChange={setSelectedAlgorithm}
+        />
+        <CryptoForm algorithm={selectedAlgorithm} /> {/* 传递当前算法 */}
+      </Container>
     </div>
   );
 }
