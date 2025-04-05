@@ -58,7 +58,7 @@ const CryptoForm = ({ algorithm }) => {
     };
 
     return (
-        <Box sx={{ width: '100%', maxWidth: 600, margin: 'auto', p: 3 }}>
+        <Box sx={{ width: '100%', margin: 0, pading: 0 }}>
             {renderAlgorithmInterface()}
         </Box>
     );

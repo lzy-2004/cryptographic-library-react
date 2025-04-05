@@ -4,12 +4,7 @@ import {
     Button,
     Typography,
     Box,
-    Divider,
-    RadioGroup,
-    FormControlLabel,
-    Radio,
-    Container,
-    CircularProgress
+    CircularProgress,
 } from '@mui/material';
 import { rsasha1Sign, rsasha1Verify, rsasha1GenerateKey } from '../../api/rsasha1';
 
@@ -31,6 +26,58 @@ const RSASHA1Crypto = () => {
 
     const [isLoading, setIsLoading] = useState(false);
 
+    const inputStyle = {
+        '& .MuiOutlinedInput-root': {
+            color: '#fff',
+            borderRadius: 2,
+            backgroundColor: 'rgba(0,0,0,0.3)',
+            '& fieldset': {
+                borderColor: '#4a4a4a',
+                transition: 'all 0.3s'
+            },
+            '&:hover fieldset': { borderColor: '#00ffff' },
+            '&.Mui-focused fieldset': {
+                borderColor: '#00ffff',
+                boxShadow: '0 0 15px rgba(0,255,255,0.3)'
+            }
+        },
+        '& .MuiInputLabel-root': {
+            color: '#00ffff!important'
+        },
+        mb: 2
+    };
+
+    const sectionStyle = {
+        background: 'rgba(255,255,255,0.1)',
+        borderRadius: 4,
+        p: 3,
+        backdropFilter: 'blur(12px)',
+        border: '1px solid rgba(255,255,255,0.3)',
+        transition: 'all 0.3s',
+        mb: 4,
+        mx: 'auto',
+        width: 600,
+        '&:hover': {
+            transform: 'translateY(-5px)',
+            boxShadow: '0 10px 20px rgba(0,255,255,0.2)'
+        }
+    };
+
+    const buttonStyle = (color) => ({
+        background: `linear-gradient(45deg, ${color.start} 30%, ${color.end} 90%)`,
+        color: color.text,
+        px: 6,
+        py: 1.5,
+        borderRadius: 25,
+        fontSize: '1rem',
+        '&:hover': {
+            transform: 'scale(1.05)',
+            boxShadow: `0 0 25px ${color.shadow}`
+        },
+        transition: 'all 0.3s',
+        mb: 2
+    });
+
     const handleGenerateKey = async () => {
         try {
             setIsLoading(true);
@@ -50,8 +97,8 @@ const RSASHA1Crypto = () => {
             setIsLoading(true);
             const response = await rsasha1Sign(
                 signData,
-                signPrivateKey,
-                signModulus
+                signPrivateKey || privateKey,
+                signModulus || modulus
             );
             setSignature(response.data.result);
         } catch (error) {
@@ -67,8 +114,8 @@ const RSASHA1Crypto = () => {
             const response = await rsasha1Verify(
                 verifyData,
                 verifySignature,
-                verifyPublicKey,
-                verifyModulus
+                verifyPublicKey || publicKey,
+                verifyModulus || modulus
             );
             setVerificationResult(response.data.result ? '验证通过 ✅' : '验证失败 ❌');
         } catch (error) {
@@ -79,135 +126,112 @@ const RSASHA1Crypto = () => {
     };
 
     return (
-        <Container maxWidth="md" sx={{ py: 4 }} className="container">
-            {/* 密钥生成区域 */}
-            <Typography variant="h5" gutterBottom>
-                RSA-SHA1 密钥生成
+        <Box sx={{
+            color: '#fff',
+            p: 4,
+            position: 'relative',
+            display: 'flex',
+            flexDirection: 'column',
+            alignItems: 'center',
+            justifyContent: 'center',
+            maxWidth: 800,
+            mx: 'auto',
+        }}>
+            <Typography variant="h3" sx={{
+                textAlign: 'center',
+                mb: 4,
+                textShadow: '0 0 5px #00ffff',
+                animation: 'glow 2s ease-in-out infinite',
+                '@keyframes glow': {
+                    '0%': { textShadow: '0 0 10px #00ffff' },
+                    '50%': { textShadow: '0 0 20px #00ffff, 0 0 30px #00ffff' },
+                    '100%': { textShadow: '0 0 10px #00ffff' }
+                }
+            }}>
+                RSA-SHA1 签名/验证
             </Typography>
-            <Box sx={{ mb: 3 }}>
+
+            {/* 密钥生成区域 */}
+            <Box sx={sectionStyle}>
+                <Typography variant="h5" sx={{ color: '#00ff9d', mb: 2 }}>
+                    ⚙️ 密钥生成
+                </Typography>
+
                 <Button
+                    fullWidth
                     variant="contained"
                     onClick={handleGenerateKey}
-                    fullWidth
-                    sx={{
-                        mt: 2,
-                        px: 4,
-                        borderRadius: 20
-                    }}
                     disabled={isLoading}
-                    endIcon={isLoading && <CircularProgress size={20} />}
+                    sx={buttonStyle({
+                        start: '#00ff9d',
+                        end: '#00b34d',
+                        text: '#000',
+                        shadow: 'rgba(0,255,157,0.6)'
+                    })}
+                    endIcon={isLoading && <CircularProgress size={24} sx={{ color: '#000' }} />}
                 >
                     生成密钥对
                 </Button>
+
                 <TextField
                     label="公钥"
                     fullWidth
                     multiline
                     rows={4}
                     value={publicKey}
-                    margin="normal"
-                    InputProps={{
-                        readOnly: true,
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    InputProps={{ readOnly: true }}
+                    sx={inputStyle}
                 />
+
                 <TextField
                     label="私钥"
                     fullWidth
                     multiline
                     rows={4}
                     value={privateKey}
-                    margin="normal"
-                    InputProps={{
-                        readOnly: true,
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    InputProps={{ readOnly: true }}
+                    sx={inputStyle}
                 />
+
                 <TextField
                     label="模数"
                     fullWidth
                     multiline
                     rows={4}
                     value={modulus}
-                    margin="normal"
-                    InputProps={{
-                        readOnly: true,
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    InputProps={{ readOnly: true }}
+                    sx={inputStyle}
                 />
             </Box>
 
-            <Divider sx={{ my: 3 }} />
-
             {/* 签名区域 */}
-            <Typography variant="h5" gutterBottom>
-                消息签名
-            </Typography>
-            <Box sx={{ mb: 3 }}>
+            <Box sx={sectionStyle}>
+                <Typography variant="h5" sx={{ color: '#00ff9d', mb: 2 }}>
+                    🔒 消息签名
+                </Typography>
+
                 <TextField
-                    label="私钥"
+                    label="私钥（如果不输入则默认使用上方生成的私钥）"
                     fullWidth
                     multiline
                     rows={4}
                     value={signPrivateKey}
                     onChange={(e) => setSignPrivateKey(e.target.value)}
-                    margin="normal"
-                    InputProps={{
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    placeholder={privateKey || "输入或自动使用生成的私钥"}
+                    sx={inputStyle}
                 />
+
                 <TextField
-                    label="模数"
+                    label="模数（如果不输入则默认使用上方生成的模数）"
                     fullWidth
                     multiline
                     rows={4}
                     value={signModulus}
                     onChange={(e) => setSignModulus(e.target.value)}
-                    margin="normal"
-                    InputProps={{
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    placeholder={modulus || "输入或自动使用生成的模数"}
+                    sx={inputStyle}
                 />
+
                 <TextField
                     label="原始数据"
                     fullWidth
@@ -215,106 +239,65 @@ const RSASHA1Crypto = () => {
                     rows={4}
                     value={signData}
                     onChange={(e) => setSignData(e.target.value)}
-                    margin="normal"
-                    InputProps={{
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    placeholder="输入要签名的数据..."
+                    sx={inputStyle}
                 />
-                <Box sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    mt: 2
-                }}>
-                    <Button
-                        variant="contained"
-                        color="primary"
-                        fullWidth
-                        onClick={handleSign}
-                        sx={{ px: 4, borderRadius: 20 }}
-                        disabled={isLoading}
-                        endIcon={isLoading && <CircularProgress size={20} />}
-                    >
-                        生成签名
-                    </Button>
-                </Box>
+
+                <Button
+                    fullWidth
+                    variant="contained"
+                    onClick={handleSign}
+                    disabled={isLoading}
+                    sx={buttonStyle({
+                        start: '#00ffff',
+                        end: '#0080ff',
+                        text: '#000',
+                        shadow: 'rgba(0,255,255,0.6)'
+                    })}
+                    endIcon={isLoading && <CircularProgress size={24} sx={{ color: '#000' }} />}
+                >
+                    生成签名
+                </Button>
+
                 <TextField
                     label="签名结果"
                     fullWidth
                     multiline
                     rows={4}
                     value={signature}
-                    margin="normal"
-                    InputProps={{
-                        readOnly: true,
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    InputProps={{ readOnly: true }}
+                    sx={inputStyle}
                 />
             </Box>
 
-            <Divider sx={{ my: 3 }} />
-
             {/* 验证区域 */}
-            <Typography variant="h5" gutterBottom>
-                签名验证
-            </Typography>
-            <Box sx={{ mb: 3 }}>
+            <Box sx={sectionStyle}>
+                <Typography variant="h5" sx={{ color: '#00ff9d', mb: 2 }}>
+                    🔓 签名验证
+                </Typography>
+
                 <TextField
-                    label="公钥"
+                    label="公钥（如果不输入则默认使用上方生成的公钥）"
                     fullWidth
                     multiline
                     rows={4}
                     value={verifyPublicKey}
                     onChange={(e) => setVerifyPublicKey(e.target.value)}
-                    margin="normal"
-                    InputProps={{
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    placeholder={publicKey || "输入或自动使用生成的公钥"}
+                    sx={inputStyle}
                 />
+
                 <TextField
-                    label="模数"
+                    label="模数（如果不输入则默认使用上方生成的模数）"
                     fullWidth
                     multiline
                     rows={4}
                     value={verifyModulus}
                     onChange={(e) => setVerifyModulus(e.target.value)}
-                    margin="normal"
-                    InputProps={{
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    placeholder={modulus || "输入或自动使用生成的模数"}
+                    sx={inputStyle}
                 />
+
                 <TextField
                     label="原始数据"
                     fullWidth
@@ -322,19 +305,10 @@ const RSASHA1Crypto = () => {
                     rows={4}
                     value={verifyData}
                     onChange={(e) => setVerifyData(e.target.value)}
-                    margin="normal"
-                    InputProps={{
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    placeholder="输入要验证的原始数据..."
+                    sx={inputStyle}
                 />
+
                 <TextField
                     label="待验证签名"
                     fullWidth
@@ -342,63 +316,37 @@ const RSASHA1Crypto = () => {
                     rows={4}
                     value={verifySignature}
                     onChange={(e) => setVerifySignature(e.target.value)}
-                    margin="normal"
-                    InputProps={{
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    placeholder="输入待验证的签名..."
+                    sx={inputStyle}
                 />
-                <Box sx={{
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    alignItems: 'center',
-                    mt: 2
-                }}>
-                    <Button
-                        variant="contained"
-                        color="secondary"
-                        fullWidth
-                        onClick={handleVerify}
-                        sx={{
-                            mt: 2,
-                            px: 4,
-                            borderRadius: 20
-                        }}
-                        disabled={isLoading}
-                        endIcon={isLoading && <CircularProgress size={20} />}
-                    >
-                        验证签名
-                    </Button>
-                </Box>
+
+                <Button
+                    fullWidth
+                    variant="contained"
+                    onClick={handleVerify}
+                    disabled={isLoading}
+                    sx={buttonStyle({
+                        start: '#ff00ff',
+                        end: '#8000ff',
+                        text: '#fff',
+                        shadow: 'rgba(255,0,255,0.6)'
+                    })}
+                    endIcon={isLoading && <CircularProgress size={24} sx={{ color: '#fff' }} />}
+                >
+                    验证签名
+                </Button>
+
                 <TextField
                     label="验证结果"
                     fullWidth
                     multiline
                     rows={2}
                     value={verificationResult}
-                    margin="normal"
-                    InputProps={{
-                        readOnly: true,
-                        sx: {
-                            backgroundColor: '#f9f9f9',
-                            '&:hover fieldset': { borderColor: 'primary.main' }
-                        }
-                    }}
-                    sx={{
-                        '& .MuiOutlinedInput-root': {
-                            borderRadius: 1
-                        }
-                    }}
+                    InputProps={{ readOnly: true }}
+                    sx={inputStyle}
                 />
             </Box>
-        </Container>
+        </Box>
     );
 };
 
