@@ -53,7 +53,7 @@ const HMACSHA256Crypto = () => {
                 opacity: 0.2
             }
         }}>
-            {/* 霓虹标题 */}
+            {/* 标题 */}
             <Typography variant="h3" sx={{
                 textAlign: 'center',
                 mb: 4,
@@ -65,7 +65,7 @@ const HMACSHA256Crypto = () => {
                     '100%': { textShadow: '0 0 10px #00ffff' }
                 }
             }}>
-                HMACSHA256 加密
+                HMACSHA256 消息认证码
             </Typography>
 
             <Grid container spacing={4} sx={{
@@ -132,7 +132,7 @@ const HMACSHA256Crypto = () => {
                     </Box>
                 </Grid>
 
-                {/* 明文输入 */}
+                {/* 消息输入 */}
                 <Grid item xs={12} sm={6} md={4}>
                     <Box sx={{
                         height: 270,
@@ -163,7 +163,7 @@ const HMACSHA256Crypto = () => {
                             rows={8}
                             value={plaintext}
                             onChange={(e) => setPlaintext(e.target.value)}
-                            placeholder="输入要加密的内容..."
+                            placeholder="输入要加密的消息..."
                             sx={{
                                 '& .MuiOutlinedInput-root': {
                                     color: '#fff',

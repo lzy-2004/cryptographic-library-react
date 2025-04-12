@@ -47,7 +47,7 @@ const Ripemd160Crypto = () => {
                 opacity: 0.2
             }
         }}>
-            {/* 霓虹标题 */}
+            {/* 标题 */}
             <Typography variant="h3" sx={{
                 textAlign: 'center',
                 mb: 4,

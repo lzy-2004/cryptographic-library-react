@@ -91,7 +91,6 @@ const AESCrypto = () => {
                         }
                     }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            {/* <Icon sx={{ color: '#00ff9d', fontSize: 32, mr: 1 }}>vpn_key</Icon> */}
                             <Typography variant="h5" sx={{ color: '#00ff9d' }}>
                                 🔑 加密密钥(16/24/32字节)
                             </Typography>
@@ -140,7 +139,6 @@ const AESCrypto = () => {
                         }
                     }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            {/* <Icon sx={{ color: '#00ff9d', fontSize: 32, mr: 1 }}>description</Icon> */}
                             <Typography variant="h5" sx={{ color: '#00ff9d' }}>
                                 📜 明文
                             </Typography>
@@ -189,7 +187,6 @@ const AESCrypto = () => {
                         }
                     }}>
                         <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
-                            {/* <Icon sx={{ color: '#00ff9d', fontSize: 32, mr: 1 }}>lock</Icon> */}
                             <Typography variant="h5" sx={{ color: '#00ff9d' }}>
                                 🔒 密文
                             </Typography>

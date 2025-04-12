@@ -4,7 +4,7 @@ import CryptoForm from './components/CryptoForm';
 import { Typography, Box } from '@mui/material';
 
 function App() {
-  const [selectedAlgorithm, setSelectedAlgorithm] = useState('AES');
+  const [selectedAlgorithm, setSelectedAlgorithm] = useState('SM4');
 
   return (
     <div id="root">
@@ -18,21 +18,19 @@ function App() {
         {/* 主内容区需要添加左边距 */}
         <Box sx={{
           flex: 1,
-          marginLeft: '150px', // 与侧边栏宽度一致
+          marginLeft: '160px', // 与侧边栏宽度一致
           padding: 4
         }}>
           <Box sx={{
             width: '100vw',
             minHeight: '100vh',
             padding: '10px',
-            // overflow: 'visible!important', // 强制解除裁剪
             background: 'rgba(0,0,0,0.9)', // 确保深色背景
             textAlign: 'center'
           }}>
             <Typography variant="h1" sx={{
               position: 'relative',
               display: 'inline-block',
-              // padding: '12px 24px',
               margin: '0 0',
               fontSize: '3.5rem',
               textAlign: 'center',

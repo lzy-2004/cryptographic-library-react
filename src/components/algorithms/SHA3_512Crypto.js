@@ -77,8 +77,8 @@ const SHA3_512Crypto = () => {
                 {/* 输入区域 */}
                 <Grid item xs={12} md={6}>
                     <Box sx={{
-                        height: 270,      // 保持与SHA256一致的高度
-                        width: 450,       // 保持与SHA256一致的宽度
+                        height: 270,
+                        width: 450,
                         background: 'rgba(255,255,255,0.1)',
                         borderRadius: 4,
                         p: 3,
@@ -129,8 +129,8 @@ const SHA3_512Crypto = () => {
                 {/* 结果区域 */}
                 <Grid item xs={12} md={6}>
                     <Box sx={{
-                        height: 270,      // 保持与SHA256一致的高度
-                        width: 450,       // 保持与SHA256一致的宽度
+                        height: 270,
+                        width: 450,
                         background: 'rgba(255,255,255,0.1)',
                         borderRadius: 4,
                         p: 3,
