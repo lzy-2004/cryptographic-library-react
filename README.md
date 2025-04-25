@@ -1,70 +1,59 @@
-# Getting Started with Create React App
+# 🔐 Cryptographic-library
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+[![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
+![React Version](https://img.shields.io/badge/React-19-61DAFB.svg)
+![MUI Version](https://img.shields.io/badge/MUI-7-007FFF.svg)
 
-## Available Scripts
+基于React构建的可视化密码学工具平台，集成15+种加密算法的加密/解密/签名验证功能，提供直观的Web界面操作。
 
-In the project directory, you can run:
+![界面预览](./src/images/界面预览.png) 
 
-### `npm start`
+## 🚀 功能特性
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+### 算法支持
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+| 类型         | 算法列表                                                                 |
+|--------------|--------------------------------------------------------------------------|
+| 对称加密     | AES、SM4、RC6                                                           |
+| 非对称加密   | RSA-1024、ECC-160、ECDSA、RSA-SHA1                                                |
+| 哈希算法     | SHA1、SHA256、SHA3-512、RIPEMD160                                       |
+| 消息认证码   | HMAC-SHA1、HMAC-SHA256                                                  |
+| 密钥派生     | PBKDF2                                                                  |
+| 编码转换     | Base64、UTF-8                                                           |
 
-### `npm test`
+### 核心功能
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+- 动态加密操作实时反馈
+- 多编码格式支持（HEX/Base64）
+- 密钥生成/导出功能
+- 响应式Material-UI界面
+- 操作状态实时提示
 
-### `npm run build`
+## 🛠 技术栈
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+**前端框架**  
+React 19 + JavaScript  
+**UI组件库**  
+@mui/material 7 + emotion        
+**HTTP客户端**  
+Axios 1.x  
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+## 📦 快速开始
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+### 环境要求
 
-### `npm run eject`
+- Node.js ≥16.14.0
+- npm ≥8.5.0 或 yarn ≥3.2.0
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+```bash
+# 克隆仓库
+git clone https://github.com/lzy-2004/cryptographic-library-react.git
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+# 安装依赖
+npm install
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+# 启动开发服务器
+npm start
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
-
-## Learn More
-
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
-
-To learn React, check out the [React documentation](https://reactjs.org/).
-
-### Code Splitting
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
-
-### Analyzing the Bundle Size
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
-
-### Making a Progressive Web App
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
-
-### Advanced Configuration
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
-
-### Deployment
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
-
-### `npm run build` fails to minify
-
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+# 访问地址
+http://localhost:3000
