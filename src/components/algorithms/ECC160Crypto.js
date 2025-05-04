@@ -202,7 +202,7 @@ const ECC160Crypto = () => {
                 />
 
                 <TextField
-                    label="明文（要求必须是Base64格式）"
+                    label="明文"
                     fullWidth
                     multiline
                     rows={3}
@@ -229,7 +229,7 @@ const ECC160Crypto = () => {
                 </Button>
 
                 <TextField
-                    label="加密结果（Base64格式）"
+                    label="加密结果"
                     fullWidth
                     multiline
                     rows={3}
@@ -257,7 +257,7 @@ const ECC160Crypto = () => {
                 />
 
                 <TextField
-                    label="密文（要求必须是Base64格式）"
+                    label="密文"
                     fullWidth
                     multiline
                     rows={3}
@@ -285,7 +285,7 @@ const ECC160Crypto = () => {
                 </Button>
 
                 <TextField
-                    label="解密结果（Base64格式）"
+                    label="解密结果"
                     fullWidth
                     multiline
                     rows={3}
