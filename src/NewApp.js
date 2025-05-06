@@ -2,7 +2,6 @@ import React, { useState } from 'react';
 import { Box, Container, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import NewAlgorithmNavigation from './components/newalgorithms/NewAlgorithmNavigation';
 import NewCryptoForm from './components/newalgorithms/NewCryptoForm';
-import DocumentationPanel from './components/newalgorithms/DocumentationPanel';
 import Header from './components/newalgorithms/Header';
 
 // 创建自定义主题
