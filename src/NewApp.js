@@ -39,9 +39,9 @@ const darkTheme = createTheme({
   components: {
     MuiCssBaseline: {
       styleOverrides: `
-        * {
-          border-radius: 0 !important;
-        }
+        // * {
+        //   border-radius: 0 !important;
+        // }
         hr, .MuiDivider-root, .MuiTableCell-root {
           display: none !important;
           height: 0 !important;
@@ -185,11 +185,7 @@ const darkTheme = createTheme({
 
 function NewApp() {
   const [selectedAlgorithm, setSelectedAlgorithm] = useState('AES');
-  const [showDocumentation, setShowDocumentation] = useState(false);
-
-  const toggleDocumentation = () => {
-    setShowDocumentation(!showDocumentation);
-  };
+  
 
   return (
     <ThemeProvider theme={darkTheme}>
@@ -231,11 +227,7 @@ function NewApp() {
               margin: 0,
               width: '100%',
             }}>
-              {showDocumentation ? (
-                <DocumentationPanel algorithm={selectedAlgorithm} />
-              ) : (
-                <NewCryptoForm algorithm={selectedAlgorithm} />
-              )}
+              <NewCryptoForm algorithm={selectedAlgorithm} />
             </Container>
           </Box>
         </Box>

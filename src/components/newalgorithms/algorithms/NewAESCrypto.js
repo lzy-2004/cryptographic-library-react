@@ -360,7 +360,7 @@ const NewAESCrypto = () => {
   };
 
   return (
-    <Box sx={{ width: '100%', borderLeft: '4px solid #757575' }}>
+    <Box sx={{ width: '100%'}}>
       <Paper 
         elevation={1} 
         sx={{ 
@@ -424,7 +424,7 @@ const NewAESCrypto = () => {
         <TextField
           label={mode === 0 ? "输入文本" : "加密文本"}
           multiline
-          rows={4}
+          rows={8}
           value={inputText}
           onChange={handleInputChange}
           placeholder={mode === 0 ? "输入要加密的明文..." : "输入要解密的密文..."}
@@ -771,7 +771,7 @@ const NewAESCrypto = () => {
             bgcolor: '#f5f5f5',
             border: '1px solid #e0e0e0',
             borderRadius: 1,
-            p: 4,
+            p: 8,
           }}>
             <Typography variant="body1" color="text.secondary" align="center">
               {mode === 0 ? 'AES加密结果将显示在此处' : 'AES解密结果将显示在此处'}
