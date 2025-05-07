@@ -7,45 +7,48 @@ import {
   Paper, 
   Typography, 
   Divider,
-  CircularProgress,
   IconButton,
-  Tooltip,
-  Alert,
   FormControl,
   InputLabel,
   Select,
+  Snackbar,
   MenuItem
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import FingerprintIcon from '@mui/icons-material/Fingerprint';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
+import InfoIcon from '@mui/icons-material/Info';
 import { sha256Hash } from '../../../api/sha256';
 
 const NewSHA256Crypto = () => {
   const [input, setInput] = useState("");
-  const [encoding, setEncoding] = useState("UTF8");
   const [outputFormat, setOutputFormat] = useState("hex");
   const [hashResult, setHashResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
+  const [showCopiedSnackbar, setShowCopiedSnackbar] = useState(false);
 
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    setError('');
+  };
+  const handleOutputFormatChange = (e) => {
+    setOutputFormat(e.target.value);
+  };
   const handleHash = async () => {
-    if (!input.trim()) {
-      setError("请输入要计算哈希值的文本");
-      return;
-    }
-    
     setLoading(true);
     setError("");
     
     try {
-      const response = await sha256Hash(input, encoding);
+      const response = await sha256Hash(input, outputFormat);
       
-      if (response.data && response.data.success) {
-        setHashResult(response.data.data);
+      if (response && response.data) {
+        if (response.data.status !== undefined && response.data.status !== 0) {
+          throw new Error(response.data.message || '哈希计算失败');
+        }
+        setHashResult(response.data.result || '');
       } else {
-        setError(response.data?.message || "哈希计算失败");
+        setError(response.data.message || "哈希计算失败");
       }
+      setLoading(false);
     } catch (error) {
       setError("哈希计算过程发生错误: " + (error.message || "未知错误"));
     } finally {
@@ -62,166 +65,223 @@ const NewSHA256Crypto = () => {
         console.error('复制失败:', err);
       });
   };
+  const handleCloseSnackbar = () => {
+    setShowCopiedSnackbar(false);
+  };
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Paper elevation={0} sx={{ p: 2, mb: 4, borderRadius: 2, bgcolor: 'background.default' }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="sha256-encoding-label">输入编码</InputLabel>
-              <Select
-                labelId="sha256-encoding-label"
-                id="sha256-encoding"
-                value={encoding}
-                label="输入编码"
-                onChange={(e) => setEncoding(e.target.value)}
-              >
-                <MenuItem value="UTF8">UTF-8</MenuItem>
-                <MenuItem value="ASCII">ASCII</MenuItem>
-                <MenuItem value="Base64">Base64</MenuItem>
-                <MenuItem value="Hex">十六进制</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="sha256-output-format-label">输出格式</InputLabel>
-              <Select
-                labelId="sha256-output-format-label"
-                id="sha256-output-format"
-                value={outputFormat}
-                label="输出格式"
-                onChange={(e) => setOutputFormat(e.target.value)}
-              >
-                <MenuItem value="hex">十六进制</MenuItem>
-                <MenuItem value="base64">Base64</MenuItem>
-                <MenuItem value="buffer">字节数组</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
+      <Paper
+        elevation={1}
+        sx={{
+          p: 3,
+          mb: 3,
+          bgcolor: 'white',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+          <InfoIcon sx={{ color: '#757575', mr: 2, mt: 0.5 }} />
+          <Box>
+            <Typography variant="body1" sx={{ mb: 1, fontWeight: 500, color: '#424242' }}>
+              SHA-256是安全哈希算法2(SHA-2)家族的一部分，它会生成256位(32字节)的哈希值，通常表示为64个十六进制字符。
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              SHA-256常用于验证数据完整性、数字签名和密码存储。
+            </Typography>
+          </Box>
+        </Box>
       </Paper>
-      
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Box sx={{ position: 'relative' }}>
-            <TextField
-              fullWidth
-              label="输入文本"
-              multiline
-              rows={6}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              variant="outlined"
-              placeholder="输入需要计算SHA-256哈希值的文本"
-            />
-            <Button
-              variant="contained"
-              color="secondary"
-              size="small"
-              sx={{ 
-                position: 'absolute', 
-                right: 8, 
-                bottom: 8,
-                minWidth: 0,
-                width: 36,
-                height: 36,
-                borderRadius: '50%'
-              }}
-              component="label"
-            >
-              <UploadFileIcon fontSize="small" />
-              <input
-                type="file"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      setInput(event.target.result);
-                    };
-                    
-                    if (encoding === 'UTF8' || encoding === 'ASCII') {
-                      reader.readAsText(file);
-                    } else if (encoding === 'Base64') {
-                      reader.readAsDataURL(file);
-                    } else {
-                      reader.readAsArrayBuffer(file);
+
+      <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}>
+        <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+          哈希设置
+        </Typography>
+
+        <TextField
+          label="输入文本"
+          multiline
+          rows={8}
+          value={input}
+          onChange={handleInputChange}
+          placeholder="在此输入要哈希的文本..."
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 3,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+            }
+          }}
+          error={!!error && error.includes('文本')}
+          helperText={error && error.includes('文本') ? error : ''}
+        />
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12}>
+            <FormControl fullWidth variant="outlined" sx={{ border: '1px solid #e0e0e0', borderRadius: 1 }}>
+              <InputLabel id="output-format-label">输出格式</InputLabel>
+              <Select
+                labelId="output-format-label"
+                value={outputFormat}
+                onChange={handleOutputFormatChange}
+                label="输出格式"
+                sx={{
+                  '& .MuiSelect-select': {
+                    fontWeight: 500,
+                    color: '#000000',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '& .MuiSvgIcon-root': { 
+                    color: '#424242',
+                    fontSize: '1.5rem'
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      borderRadius: 1,
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
                     }
                   }
                 }}
-              />
-            </Button>
-          </Box>
-        </Grid>
-        
-        <Grid item xs={12}>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            SHA-256是安全哈希算法2(SHA-2)家族的一部分，它会生成256位(32字节)的哈希值，通常表示为64个十六进制字符。
-            SHA-256常用于验证数据完整性、数字签名和密码存储。
-          </Alert>
-        </Grid>
-        
-        <Grid item xs={12}>
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            onClick={handleHash}
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : <FingerprintIcon />}
-            sx={{ py: 1.5 }}
-          >
-            {loading ? '计算中...' : '计算SHA-256哈希值'}
-          </Button>
-        </Grid>
-        
-        {error && (
-          <Grid item xs={12}>
-            <Alert severity="error">{error}</Alert>
-          </Grid>
-        )}
-        
-        {hashResult && (
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 2, position: 'relative', mt: 2 }}>
-              <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                SHA-256哈希结果 ({outputFormat === 'hex' ? '十六进制' : outputFormat === 'base64' ? 'Base64' : '字节数组'}):
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  overflowWrap: 'break-word', 
-                  wordBreak: 'break-word',
-                  fontFamily: 'monospace',
-                  pr: 4,
-                  fontSize: '1rem',
-                  color: outputFormat === 'hex' ? '#2ecc71' : '#3498db'
-                }}
               >
-                {hashResult}
-              </Typography>
-              <Tooltip title="复制到剪贴板">
-                <IconButton 
-                  sx={{ position: 'absolute', top: 8, right: 8 }}
-                  onClick={() => copyToClipboard(hashResult)}
-                >
-                  <ContentCopyIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Paper>
-            
+                <MenuItem value="hex">十六进制</MenuItem>
+                <MenuItem value="base64">Base64</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
+
+        <Button
+          variant="contained"
+          onClick={handleHash}
+          disabled={loading}
+          fullWidth
+          size="large"
+          sx={{
+            mb: 3,
+            bgcolor: '#616161',
+            '&:hover': {
+              bgcolor: '#424242',
+            },
+            py: 1.5,
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+        >
+          {loading ? '哈希计算中...' : '计算SHA256哈希'}
+        </Button>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
+          SHA256哈希结果
+        </Typography>
+
+        {hashResult ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
+            <TextField
+              multiline
+              rows={4}
+              value={hashResult}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: {
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+            />
+            <IconButton
+              onClick={copyToClipboard}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+
             <Box sx={{ mt: 3 }}>
               <Typography variant="body2" color="text.secondary">
-                <strong>注意：</strong> SHA-256是单向哈希函数，不可逆。相同的输入总是产生相同的输出，但从输出无法推导出原始输入。
+                • SHA256哈希是256位（32字节）固定长度
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                • 结果以{outputFormat === 'hex' ? '64位十六进制字符' : 'Base64编码'}表示
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                • 即使输入发生微小变化，输出也会完全不同
               </Typography>
             </Box>
-          </Grid>
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              SHA256哈希结果将显示在此处
+            </Typography>
+          </Box>
         )}
-      </Grid>
+
+        {error && !error.includes('文本') && (
+          <Typography color="error" sx={{ mt: 2 }}>
+            {error}
+          </Typography>
+        )}
+      </Paper>
+
+      <Snackbar
+        open={showCopiedSnackbar}
+        autoHideDuration={3000}
+        onClose={handleCloseSnackbar}
+        message="已复制到剪贴板！"
+      />
     </Box>
   );
 };

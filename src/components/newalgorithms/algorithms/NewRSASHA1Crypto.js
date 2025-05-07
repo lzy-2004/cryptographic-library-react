@@ -11,373 +11,917 @@ import {
   IconButton,
   Tooltip,
   Alert,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
-  ToggleButtonGroup,
-  ToggleButton
+  Tabs,
+  Tab,
+  Snackbar
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import DriveFileRenameOutlineIcon from '@mui/icons-material/DriveFileRenameOutline';
 import VerifiedUserIcon from '@mui/icons-material/VerifiedUser';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import InfoIcon from '@mui/icons-material/Info';
+import { rsasha1Sign, rsasha1Verify, rsasha1GenerateKey } from '../../../api/rsasha1';
 
-// 模拟API调用
-const rsaSha1Sign = async (message, privateKey, encoding) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      try {
-        // 模拟RSA-SHA1签名
-        const mockSignature = Array(128).fill(0).map(() => 
-          Math.floor(Math.random() * 16).toString(16)
-        ).join('');
-        
-        resolve({
-          data: {
-            success: true,
-            data: mockSignature
-          }
-        });
-      } catch (error) {
-        resolve({
-          data: {
-            success: false,
-            message: "签名生成失败：" + (error.message || "未知错误")
-          }
-        });
-      }
-    }, 800);
-  });
-};
+const TabPanel = (props) => {
+  const { children, value, index, ...other } = props;
 
-const rsaSha1Verify = async (message, signature, publicKey, encoding) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      try {
-        // 模拟RSA-SHA1验证
-        // 为了演示，我们假设有80%的概率验证成功
-        const isValid = Math.random() < 0.8;
-        
-        resolve({
-          data: {
-            success: true,
-            data: isValid
-          }
-        });
-      } catch (error) {
-        resolve({
-          data: {
-            success: false,
-            message: "签名验证失败：" + (error.message || "未知错误")
-          }
-        });
-      }
-    }, 800);
-  });
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`rsasha1-tabpanel-${index}`}
+      aria-labelledby={`rsasha1-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
 };
 
 const NewRSASHA1Crypto = () => {
-  const [mode, setMode] = useState("sign"); // sign 或 verify
-  const [message, setMessage] = useState("");
-  const [privateKey, setPrivateKey] = useState("");
-  const [publicKey, setPublicKey] = useState("");
+  const [tabValue, setTabValue] = useState(0);
+  
+  // 签名状态
+  const [signMessage, setSignMessage] = useState("");
+  const [signPrivateKey, setSignPrivateKey] = useState("");
+  const [signModulus, setSignModulus] = useState("");
   const [signature, setSignature] = useState("");
-  const [encoding, setEncoding] = useState("UTF8");
-  const [result, setResult] = useState(null);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [signLoading, setSignLoading] = useState(false);
+  const [signError, setSignError] = useState("");
+  
+  // 验签状态
+  const [verifyMessage, setVerifyMessage] = useState("");
+  const [verifySignature, setVerifySignature] = useState("");
+  const [verifyPublicKey, setVerifyPublicKey] = useState("");
+  const [verifyModulus, setVerifyModulus] = useState("");
+  const [verifyResult, setVerifyResult] = useState(null);
+  const [verifyLoading, setVerifyLoading] = useState(false);
+  const [verifyError, setVerifyError] = useState("");
+  
+  // 密钥生成状态
+  const [generatedPublicKey, setGeneratedPublicKey] = useState("");
+  const [generatedPrivateKey, setGeneratedPrivateKey] = useState("");
+  const [generatedModulus, setGeneratedModulus] = useState("");
+  const [keyGenLoading, setKeyGenLoading] = useState(false);
+  const [keyGenError, setKeyGenError] = useState("");
+  
+  const [showCopiedSnackbar, setShowCopiedSnackbar] = useState(false);
 
-  const handleModeChange = (event, newMode) => {
-    if (newMode !== null) {
-      setMode(newMode);
-      setResult(null);
-      setError("");
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+
+  const handleSign = async () => {
+    if (!signMessage || !signPrivateKey || !signModulus) {
+      setSignError("请输入消息内容、私钥和模数");
+      return;
+    }
+    
+    setSignLoading(true);
+    setSignError("");
+    
+    try {
+      const response = await rsasha1Sign(signMessage, signPrivateKey, signModulus);
+      
+      if (response && response.data) {
+        if (response.data.status !== undefined && response.data.status !== 0) {
+          throw new Error(response.data.message || '签名生成失败');
+        }
+        setSignature(response.data.result);
+      } else {
+        setSignError(response.data?.message || "签名生成失败");
+      }
+    } catch (error) {
+      setSignError("签名生成过程发生错误: " + (error.message || "未知错误"));
+    } finally {
+      setSignLoading(false);
     }
   };
 
-  const handleProcess = async () => {
-    if (!message.trim()) {
-      setError("请输入消息内容");
+  const handleVerify = async () => {
+    if (!verifyMessage || !verifySignature || !verifyPublicKey || !verifyModulus) {
+      setVerifyError("请输入消息内容、签名、公钥和模数");
       return;
     }
     
-    if (mode === "sign" && !privateKey.trim()) {
-      setError("请输入RSA私钥");
-      return;
-    }
-    
-    if (mode === "verify") {
-      if (!signature.trim()) {
-        setError("请输入签名");
-        return;
-      }
-      if (!publicKey.trim()) {
-        setError("请输入RSA公钥");
-        return;
-      }
-    }
-    
-    setLoading(true);
-    setError("");
+    setVerifyLoading(true);
+    setVerifyError("");
     
     try {
-      let response;
+      const response = await rsasha1Verify(verifyMessage, verifySignature, verifyPublicKey, verifyModulus);
       
-      if (mode === "sign") {
-        response = await rsaSha1Sign(message, privateKey, encoding);
+      if (response && response.data) {
+        if (response.data.status !== undefined && response.data.status !== 0) {
+          throw new Error(response.data.message || '验证失败');
+        }
+        setVerifyResult(response.data.result);
       } else {
-        response = await rsaSha1Verify(message, signature, publicKey, encoding);
-      }
-      
-      if (response.data && response.data.success) {
-        setResult(response.data.data);
-      } else {
-        setError(response.data?.message || (mode === "sign" ? "签名生成失败" : "签名验证失败"));
+        setVerifyError(response.data?.message || "验证失败");
       }
     } catch (error) {
-      setError(`${mode === "sign" ? "签名生成" : "签名验证"}过程发生错误: ` + (error.message || "未知错误"));
+      setVerifyError("验证过程发生错误: " + (error.message || "未知错误"));
     } finally {
-      setLoading(false);
+      setVerifyLoading(false);
+    }
+  };
+
+  const handleGenerateKeyPair = async () => {
+    setKeyGenLoading(true);
+    setKeyGenError("");
+    
+    try {
+      const response = await rsasha1GenerateKey();
+      
+      if (response && response.data) {
+        setGeneratedPublicKey(response.data.publicKey);
+        setGeneratedPrivateKey(response.data.privateKey);
+        setGeneratedModulus(response.data.modulus);
+      } else {
+        setKeyGenError(response.data?.message || "密钥生成失败");
+      }
+    } catch (error) {
+      setKeyGenError("密钥生成过程发生错误: " + (error.message || "未知错误"));
+    } finally {
+      setKeyGenLoading(false);
     }
   };
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text)
       .then(() => {
-        console.log('文本已复制到剪贴板');
+        setShowCopiedSnackbar(true);
+        setTimeout(() => setShowCopiedSnackbar(false), 2000);
       })
       .catch(err => {
         console.error('复制失败:', err);
       });
   };
 
+  const handleUseGeneratedKey = (type) => {
+    if (type === 'sign') {
+      setSignPrivateKey(generatedPrivateKey);
+      setSignModulus(generatedModulus);
+    } else if (type === 'verify') {
+      setVerifyPublicKey(generatedPublicKey);
+      setVerifyModulus(generatedModulus);
+    }
+  };
+
+  const handleCloseSnackbar = () => {
+    setShowCopiedSnackbar(false);
+  };
+
   return (
     <Box sx={{ width: '100%' }}>
-      <Paper elevation={0} sx={{ p: 2, mb: 4, borderRadius: 2, bgcolor: 'background.default' }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6}>
-            <ToggleButtonGroup
-              value={mode}
-              exclusive
-              onChange={handleModeChange}
-              aria-label="签名或验证模式"
-              fullWidth
-              size="small"
-            >
-              <ToggleButton value="sign" aria-label="签名">
-                <DriveFileRenameOutlineIcon sx={{ mr: 1 }} />
-                生成签名
-              </ToggleButton>
-              <ToggleButton value="verify" aria-label="验证">
-                <VerifiedUserIcon sx={{ mr: 1 }} />
-                验证签名
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="rsasha1-encoding-label">消息编码</InputLabel>
-              <Select
-                labelId="rsasha1-encoding-label"
-                id="rsasha1-encoding"
-                value={encoding}
-                label="消息编码"
-                onChange={(e) => setEncoding(e.target.value)}
-              >
-                <MenuItem value="UTF8">UTF-8</MenuItem>
-                <MenuItem value="ASCII">ASCII</MenuItem>
-                <MenuItem value="Base64">Base64</MenuItem>
-                <MenuItem value="Hex">十六进制</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-        </Grid>
+      <Paper
+        elevation={1}
+        sx={{
+          p: 3,
+          mb: 3,
+          bgcolor: 'white',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+          <InfoIcon sx={{ color: '#757575', mr: 2, mt: 0.5 }} />
+          <Box>
+            <Typography variant="body1" sx={{ mb: 1, fontWeight: 500, color: '#424242' }}>
+              RSA-SHA1是一种数字签名算法，结合了RSA加密和SHA1哈希函数。
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              RSA-SHA1用于生成和验证数字签名，确保数据的完整性和来源真实性。但请注意，SHA1哈希算法已被发现存在安全漏洞，对于高安全性需求，建议使用RSA-SHA256等更安全的算法。
+            </Typography>
+          </Box>
+        </Box>
       </Paper>
+
+      <Box sx={{ width: '100%', mb: 3 }}>
+        <Tabs 
+          value={tabValue} 
+          onChange={handleTabChange} 
+          variant="fullWidth"
+          sx={{
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#757575',
+            },
+          }}
+        >
+          <Tab 
+            icon={<DriveFileRenameOutlineIcon />} 
+            label="签名" 
+            id="rsasha1-tab-0" 
+            aria-controls="rsasha1-tabpanel-0"
+            sx={{
+              '&.Mui-selected': {
+                color: '#424242',
+              },
+            }}
+          />
+          <Tab 
+            icon={<VerifiedUserIcon />} 
+            label="验签" 
+            id="rsasha1-tab-1" 
+            aria-controls="rsasha1-tabpanel-1"
+            sx={{
+              '&.Mui-selected': {
+                color: '#424242',
+              },
+            }}
+          />
+          <Tab 
+            icon={<VpnKeyIcon />} 
+            label="密钥对生成" 
+            id="rsasha1-tab-2" 
+            aria-controls="rsasha1-tabpanel-2"
+            sx={{
+              '&.Mui-selected': {
+                color: '#424242',
+              },
+            }}
+          />
+        </Tabs>
+      </Box>
       
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Box sx={{ position: 'relative' }}>
+      <TabPanel value={tabValue} index={0}>
+        <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+          RSA-SHA1签名生成
+        </Typography>
+        
+        <TextField
+          label="消息内容"
+          multiline
+          rows={4}
+          value={signMessage}
+          onChange={(e) => setSignMessage(e.target.value)}
+          placeholder="输入需要签名的消息内容"
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 1,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+            }
+          }}
+        />
+        
+        <TextField
+          label="RSA私钥"
+          multiline
+          rows={4}
+          value={signPrivateKey}
+          onChange={(e) => setSignPrivateKey(e.target.value)}
+          placeholder="输入RSA私钥"
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 1,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+              fontFamily: 'monospace',
+            }
+          }}
+          InputProps={{
+            endAdornment: generatedPrivateKey ? (
+              <Tooltip title="使用生成的私钥">
+                <IconButton 
+                  onClick={() => handleUseGeneratedKey('sign')}
+                  sx={{ position: 'absolute', right: 8, top: 8 }}
+                >
+                  <ContentCopyIcon />
+                </IconButton>
+              </Tooltip>
+            ) : null
+          }}
+        />
+        
+        <TextField
+          label="模数"
+          multiline
+          rows={4}
+          value={signModulus}
+          onChange={(e) => setSignModulus(e.target.value)}
+          placeholder="输入模数"
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 3,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+              fontFamily: 'monospace',
+            }
+          }}
+        />
+
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={handleSign}
+          disabled={signLoading}
+          startIcon={signLoading ? <CircularProgress size={20} /> : <DriveFileRenameOutlineIcon />}
+          sx={{
+            mb: 3,
+            bgcolor: '#616161',
+            '&:hover': {
+              bgcolor: '#424242',
+            },
+            py: 1.5,
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+        >
+          {signLoading ? '签名中...' : '生成RSA-SHA1签名'}
+        </Button>
+        
+        {signError && (
+          <Alert severity="error" sx={{ mb: 3 }}>{signError}</Alert>
+        )}
+
+        <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
+          签名结果
+        </Typography>
+        
+        {signature ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
             <TextField
-              fullWidth
-              label="消息内容"
               multiline
               rows={4}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
+              value={signature}
               variant="outlined"
-              placeholder="输入需要签名或验证的消息内容"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: { 
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
             />
-            <Button
-              variant="contained"
-              color="secondary"
-              size="small"
+            <IconButton 
+              onClick={() => copyToClipboard(signature)}
               sx={{ 
                 position: 'absolute', 
                 right: 8, 
-                bottom: 8,
-                minWidth: 0,
-                width: 36,
-                height: 36,
-                borderRadius: '50%'
+                top: 8,
+                color: '#616161'
               }}
-              component="label"
             >
-              <UploadFileIcon fontSize="small" />
-              <input
-                type="file"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      setMessage(event.target.result);
-                    };
-                    reader.readAsText(file);
-                  }
-                }}
-              />
-            </Button>
+              <ContentCopyIcon />
+            </IconButton>
           </Box>
-        </Grid>
-        
-        {mode === "sign" ? (
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="RSA私钥"
-              multiline
-              rows={4}
-              value={privateKey}
-              onChange={(e) => setPrivateKey(e.target.value)}
-              variant="outlined"
-              placeholder="输入RSA私钥 (PEM格式)"
-            />
-          </Grid>
         ) : (
-          <>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="签名"
-                multiline
-                rows={3}
-                value={signature}
-                onChange={(e) => setSignature(e.target.value)}
-                variant="outlined"
-                placeholder="输入RSA-SHA1签名 (十六进制格式)"
-              />
-            </Grid>
-            <Grid item xs={12}>
-              <TextField
-                fullWidth
-                label="RSA公钥"
-                multiline
-                rows={3}
-                value={publicKey}
-                onChange={(e) => setPublicKey(e.target.value)}
-                variant="outlined"
-                placeholder="输入RSA公钥 (PEM格式)"
-              />
-            </Grid>
-          </>
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              RSA-SHA1签名结果将显示在此处
+            </Typography>
+          </Box>
         )}
+      </TabPanel>
+      
+      <TabPanel value={tabValue} index={1}>
+        <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+          RSA-SHA1签名验证
+        </Typography>
         
-        <Grid item xs={12}>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            RSA-SHA1是一种数字签名算法，结合了RSA加密和SHA1哈希函数。
-            {mode === "sign" ? 
-              " 使用私钥生成签名，可用于证明数据的完整性和来源。" : 
-              " 使用公钥验证签名，确认数据未被篡改并来自预期的发送者。"}
-          </Alert>
-        </Grid>
+        <TextField
+          label="消息内容"
+          multiline
+          rows={4}
+          value={verifyMessage}
+          onChange={(e) => setVerifyMessage(e.target.value)}
+          placeholder="输入需要验证的消息内容"
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 1,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+            }
+          }}
+        />
         
-        <Grid item xs={12}>
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            onClick={handleProcess}
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : (mode === "sign" ? <DriveFileRenameOutlineIcon /> : <VerifiedUserIcon />)}
-            sx={{ py: 1.5 }}
-          >
-            {loading ? (mode === "sign" ? '生成中...' : '验证中...') : (mode === "sign" ? '生成RSA-SHA1签名' : '验证RSA-SHA1签名')}
-          </Button>
-        </Grid>
+        <TextField
+          label="签名"
+          multiline
+          rows={4}
+          value={verifySignature}
+          onChange={(e) => setVerifySignature(e.target.value)}
+          placeholder="输入RSA-SHA1签名"
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 1,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+              fontFamily: 'monospace',
+            }
+          }}
+        />
         
-        {error && (
-          <Grid item xs={12}>
-            <Alert severity="error">{error}</Alert>
-          </Grid>
-        )}
-        
-        {result !== null && mode === "sign" && (
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 2, position: 'relative', mt: 2 }}>
-              <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                RSA-SHA1签名结果 (十六进制):
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  overflowWrap: 'break-word', 
-                  wordBreak: 'break-word',
-                  fontFamily: 'monospace',
-                  pr: 4,
-                  fontSize: '1rem',
-                  color: '#3498db'
-                }}
-              >
-                {result}
-              </Typography>
-              <Tooltip title="复制到剪贴板">
+        <TextField
+          label="RSA公钥"
+          multiline
+          rows={4}
+          value={verifyPublicKey}
+          onChange={(e) => setVerifyPublicKey(e.target.value)}
+          placeholder="输入RSA公钥"
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 1,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+              fontFamily: 'monospace',
+            }
+          }}
+          InputProps={{
+            endAdornment: generatedPublicKey ? (
+              <Tooltip title="使用生成的公钥">
                 <IconButton 
-                  sx={{ position: 'absolute', top: 8, right: 8 }}
-                  onClick={() => copyToClipboard(result)}
+                  onClick={() => handleUseGeneratedKey('verify')}
+                  sx={{ position: 'absolute', right: 8, top: 8 }}
                 >
-                  <ContentCopyIcon fontSize="small" />
+                  <ContentCopyIcon />
                 </IconButton>
               </Tooltip>
-            </Paper>
-            
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                <strong>提示：</strong> 该签名可以与对应的公钥一起使用，验证消息的完整性和来源真实性。
-                但请注意，SHA1哈希算法已被发现存在安全漏洞，对于高安全性需求，建议使用RSA-SHA256等更安全的算法。
-              </Typography>
-            </Box>
-          </Grid>
-        )}
+            ) : null
+          }}
+        />
         
-        {result !== null && mode === "verify" && (
-          <Grid item xs={12}>
-            <Paper 
-              variant="outlined" 
-              sx={{ 
-                p: 2, 
-                position: 'relative', 
-                mt: 2,
-                borderLeft: '4px solid',
-                borderColor: result ? 'success.main' : 'error.main'
+        <TextField
+          label="模数"
+          multiline
+          rows={4}
+          value={verifyModulus}
+          onChange={(e) => setVerifyModulus(e.target.value)}
+          placeholder="输入模数"
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 3,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+              fontFamily: 'monospace',
+            }
+          }}
+        />
+
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={handleVerify}
+          disabled={verifyLoading}
+          startIcon={verifyLoading ? <CircularProgress size={20} /> : <VerifiedUserIcon />}
+          sx={{
+            mb: 3,
+            bgcolor: '#616161',
+            '&:hover': {
+              bgcolor: '#424242',
+            },
+            py: 1.5,
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+        >
+          {verifyLoading ? '验证中...' : '验证RSA-SHA1签名'}
+        </Button>
+        
+        {verifyError && (
+          <Alert severity="error" sx={{ mb: 3 }}>{verifyError}</Alert>
+        )}
+
+        <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
+          验证结果
+        </Typography>
+
+        {verifyResult!== null ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
+            <TextField
+              multiline
+              rows={4}
+              value={verifyResult ? '签名验证成功' : '签名验证失败'}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: {
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+            />
+            <IconButton
+              onClick={() => copyToClipboard(verifyResult)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: '#616161'
               }}
             >
-              <Typography variant="h6" gutterBottom sx={{ color: result ? 'success.main' : 'error.main', fontWeight: 'bold' }}>
-                {result ? '签名验证成功' : '签名验证失败'}
-              </Typography>
-              <Typography variant="body1">
-                {result ? 
-                  '该消息的签名有效，内容未被篡改，且来自于预期的发送者。' : 
-                  '该消息的签名无效，可能内容已被篡改或签名不是由预期的发送者生成的。'}
-              </Typography>
-            </Paper>
-          </Grid>
+              <ContentCopyIcon />
+            </IconButton>
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              RSA-SHA1验签结果将显示在此处
+            </Typography>
+          </Box>
         )}
-      </Grid>
+
+        {/* {verifyResult !== null && (
+          <Paper 
+            variant="outlined" 
+            sx={{ 
+              p: 3, 
+              position: 'relative', 
+              mt: 2,
+              borderLeft: '4px solid',
+              borderColor: verifyResult ? 'success.main' : 'error.main'
+            }}
+          >
+            <Typography variant="h6" gutterBottom sx={{ color: verifyResult ? 'success.main' : 'error.main', fontWeight: 'bold' }}>
+              {verifyResult ? '签名验证成功' : '签名验证失败'}
+            </Typography>
+            <Typography variant="body1">
+              {verifyResult ? 
+                '该消息的签名有效，内容未被篡改，且来自于预期的发送者。' : 
+                '该消息的签名无效，可能内容已被篡改或签名不是由预期的发送者生成的。'}
+            </Typography>
+          </Paper>
+        )} */}
+      </TabPanel>
+      
+      <TabPanel value={tabValue} index={2}>
+        <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+          RSA-SHA1密钥对生成
+        </Typography>
+        
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={handleGenerateKeyPair}
+          disabled={keyGenLoading}
+          startIcon={keyGenLoading ? <CircularProgress size={20} /> : <VpnKeyIcon />}
+          sx={{
+            mb: 3,
+            bgcolor: '#616161',
+            '&:hover': {
+              bgcolor: '#424242',
+            },
+            py: 1.5,
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+        >
+          {keyGenLoading ? '生成中...' : '生成RSA密钥对'}
+        </Button>
+        
+        {keyGenError && (
+          <Alert severity="error" sx={{ mb: 3 }}>{keyGenError}</Alert>
+        )}
+
+        <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
+          生成的密钥对
+        </Typography>
+        
+        <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, mb: 1, color: '#424242' }}>
+          公钥
+        </Typography>
+        
+        {generatedPublicKey ? (
+          <Box sx={{ position: 'relative', mt: 1, mb: 3 }}>
+            <TextField
+              multiline
+              rows={4}
+              value={generatedPublicKey}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: { 
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+            />
+            <IconButton 
+              onClick={() => copyToClipboard(generatedPublicKey)}
+              sx={{ 
+                position: 'absolute', 
+                right: 8, 
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+          </Box>
+        ) : (
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 4,
+            mb: 3
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              生成的公钥将显示在此处
+            </Typography>
+          </Box>
+        )}
+        
+        <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, mb: 1, color: '#424242' }}>
+          私钥
+        </Typography>
+        
+        {generatedPrivateKey ? (
+          <Box sx={{ position: 'relative', mt: 1, mb: 3 }}>
+            <TextField
+              multiline
+              rows={4}
+              value={generatedPrivateKey}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: { 
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+            />
+            <IconButton 
+              onClick={() => copyToClipboard(generatedPrivateKey)}
+              sx={{ 
+                position: 'absolute', 
+                right: 8, 
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+          </Box>
+        ) : (
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 4,
+            mb: 3
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              生成的私钥将显示在此处
+            </Typography>
+          </Box>
+        )}
+        
+        <Typography variant="subtitle1" gutterBottom sx={{ mt: 2, mb: 1, color: '#424242' }}>
+          模数
+        </Typography>
+        
+        {generatedModulus ? (
+          <Box sx={{ position: 'relative', mt: 1 }}>
+            <TextField
+              multiline
+              rows={4}
+              value={generatedModulus}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: { 
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+            />
+            <IconButton 
+              onClick={() => copyToClipboard(generatedModulus)}
+              sx={{ 
+                position: 'absolute', 
+                right: 8, 
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+          </Box>
+        ) : (
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 4
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              生成的模数将显示在此处
+            </Typography>
+          </Box>
+        )}
+        
+      </TabPanel>
+      
+      <Snackbar
+        open={showCopiedSnackbar}
+        autoHideDuration={2000}
+        onClose={() => setShowCopiedSnackbar(false)}
+        message="已复制到剪贴板"
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Box>
   );
 };
 
-export default NewRSASHA1Crypto; 
+export default NewRSASHA1Crypto;

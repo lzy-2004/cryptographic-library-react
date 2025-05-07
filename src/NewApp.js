@@ -43,7 +43,7 @@ const darkTheme = createTheme({
         // }
         hr, .MuiDivider-root, .MuiTableCell-root {
           display: none !important;
-          height: 0 !important;
+          //height: 0 !important;
           border: none !important;
         }
         .MuiBox-root, .MuiPaper-root, .MuiContainer-root {

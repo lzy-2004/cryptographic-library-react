@@ -1,360 +1,795 @@
 import React, { useState } from 'react';
 import { 
-  Box, 
-  Button, 
-  TextField, 
-  Grid, 
-  Paper, 
-  Typography, 
-  Divider,
+  Box,
+  Button,
+  TextField,
+  Grid,
+  Paper,
+  Typography,
   CircularProgress,
   IconButton,
   Tooltip,
   Alert,
+  Tabs,
+  Tab,
   FormControl,
   InputLabel,
   Select,
   MenuItem,
-  ToggleButtonGroup,
-  ToggleButton
+  Snackbar
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
+import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import InfoIcon from '@mui/icons-material/Info';
+import { ecc160Encrypt, ecc160Decrypt, ecc160GenerateKey } from '../../../api/ecc160'
 
-// 模拟API调用
-const eccEncrypt = async (plaintext, publicKey, encoding) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      try {
-        // 模拟ECC加密结果
-        const mockCiphertext = Array(64).fill(0).map(() => 
-          Math.floor(Math.random() * 16).toString(16)
-        ).join('');
-        
-        resolve({
-          data: {
-            success: true,
-            data: mockCiphertext
-          }
-        });
-      } catch (error) {
-        resolve({
-          data: {
-            success: false,
-            message: "加密失败：" + (error.message || "未知错误")
-          }
-        });
-      }
-    }, 600);
-  });
+const TabPanel = (props) => {
+  const { children, value, index, ...other } = props;
+
+  return (
+    <div
+      role="tabpanel"
+      hidden={value !== index}
+      id={`ecc160-tabpanel-${index}`}
+      aria-labelledby={`ecc160-tab-${index}`}
+      {...other}
+    >
+      {value === index && (
+        <Box sx={{ p: 3 }}>
+          {children}
+        </Box>
+      )}
+    </div>
+  );
 };
-
-const eccDecrypt = async (ciphertext, privateKey) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      try {
-        // 模拟ECC解密结果
-        const mockPlaintext = "解密后的原始消息内容示例";
-        
-        resolve({
-          data: {
-            success: true,
-            data: mockPlaintext
-          }
-        });
-      } catch (error) {
-        resolve({
-          data: {
-            success: false,
-            message: "解密失败：" + (error.message || "未知错误")
-          }
-        });
-      }
-    }, 600);
-  });
-};
-
 const NewECC160Crypto = () => {
-  const [mode, setMode] = useState("encrypt"); // encrypt 或 decrypt
-  const [input, setInput] = useState("");
-  const [privateKey, setPrivateKey] = useState("");
+  const [tabValue, setTabValue] = useState(0);
+    
+  // 加密状态
+  const [plaintext, setPlaintext] = useState("");
   const [publicKey, setPublicKey] = useState("");
-  const [encoding, setEncoding] = useState("UTF8");
-  const [result, setResult] = useState("");
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [encryptedText, setEncryptedText] = useState("");
+  const [encryptLoading, setEncryptLoading] = useState(false);
+  const [encryptError, setEncryptError] = useState("");
+  
+  // 解密状态
+  const [ciphertext, setCiphertext] = useState("");
+  const [privateKey, setPrivateKey] = useState("");
+  const [decryptedText, setDecryptedText] = useState("");
+  const [decryptLoading, setDecryptLoading] = useState(false);
+  const [decryptError, setDecryptError] = useState("");
+  
+  // 密钥生成状态
+  const [generatedPublicKey, setGeneratedPublicKey] = useState("");
+  const [generatedPrivateKey, setGeneratedPrivateKey] = useState("");
+  const [keyGenLoading, setKeyGenLoading] = useState(false);
+  const [keyGenError, setKeyGenError] = useState("");
+  
+  const [showCopiedSnackbar, setShowCopiedSnackbar] = useState(false);
 
-  const handleModeChange = (event, newMode) => {
-    if (newMode !== null) {
-      setMode(newMode);
-      setResult("");
-      setError("");
+  const handleTabChange = (event, newValue) => {
+    setTabValue(newValue);
+  };
+  
+  const handleEncrypt = async () => {
+    if (!plaintext || !publicKey ) {
+      setEncryptError("请输入待加密文本和公钥");
+      return;
+    }
+    
+    setEncryptLoading(true);
+    setEncryptError("");
+    
+    try {
+      const response = await ecc160Encrypt(publicKey,plaintext);
+      if (response && response.data) {
+        setEncryptedText(response.data.data);
+      } 
+    } catch (error) {
+      setEncryptError("加密过程发生错误: " + (error.message || "未知错误"));
+    } finally {
+      setEncryptLoading(false);
     }
   };
 
-  const handleProcess = async () => {
-    if (!input.trim()) {
-      setError(mode === "encrypt" ? "请输入要加密的明文" : "请输入要解密的密文");
+  const handleDecrypt = async () => {
+    if (!ciphertext || !privateKey) {
+      setDecryptError("请输入待解密文本和私钥");
       return;
     }
-    
-    if (mode === "encrypt" && !publicKey.trim()) {
-      setError("请输入ECC公钥");
-      return;
-    }
-    
-    if (mode === "decrypt" && !privateKey.trim()) {
-      setError("请输入ECC私钥");
-      return;
-    }
-    
-    setLoading(true);
-    setError("");
+    setDecryptLoading(true);
+    setDecryptError("");
     
     try {
-      let response;
-      
-      if (mode === "encrypt") {
-        response = await eccEncrypt(input, publicKey, encoding);
-      } else {
-        response = await eccDecrypt(input, privateKey);
-      }
-      
-      if (response.data && response.data.success) {
-        setResult(response.data.data);
-      } else {
-        setError(response.data?.message || (mode === "encrypt" ? "加密失败" : "解密失败"));
+      const response = await ecc160Decrypt(privateKey, ciphertext);
+      if (response && response.data) {
+        setDecryptedText(response.data.data);
+      } 
+    } catch (error) {
+      setDecryptError("解密过程发生错误: " + (error.message || "未知错误"));
+    } finally {
+      setDecryptLoading(false);
+    }
+  };
+
+  const handleGenerateKeyPair = async () => {
+    setKeyGenLoading(true);
+    setKeyGenError("");
+    
+    try {
+      const response = await ecc160GenerateKey();
+      if (response && response.data) {
+        setGeneratedPublicKey(response.data.publicKey);
+        setGeneratedPrivateKey(response.data.privateKey);
       }
     } catch (error) {
-      setError(`${mode === "encrypt" ? "加密" : "解密"}过程发生错误: ` + (error.message || "未知错误"));
+      setKeyGenError("密钥生成过程发生错误: " + (error.message || "未知错误"));
     } finally {
-      setLoading(false);
+      setKeyGenLoading(false);
     }
   };
 
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text)
       .then(() => {
-        console.log('文本已复制到剪贴板');
+        setShowCopiedSnackbar(true);
+        setTimeout(() => setShowCopiedSnackbar(false), 2000);
       })
       .catch(err => {
         console.error('复制失败:', err);
       });
   };
 
-  const generateKeyPair = () => {
-    // 模拟生成密钥对
-    setPublicKey("-----BEGIN PUBLIC KEY-----\nMFkwEwYHKoZIzj0CAQYIKoZIzj0DAQcDQgAE7Ee8TlNaDxGELvibQ8eGF3Gobwo6\nXM3K3w2vWxqOY9vFAqWskiOJXjGwyVj0y1WyiOr8tPAv7xAzuxW59f8p+Q==\n-----END PUBLIC KEY-----");
-    setPrivateKey("-----BEGIN PRIVATE KEY-----\nMIGHAgEAMBMGByqGSM49AgEGCCqGSM49AwEHBG0wawIBAQQgPp4XBkdj61lYLbf1\nxRIGSR4aoIfwjg8RHwsj4pVJfB+hRANCAATsR7xOU1oPEYQu+JtDx4YXcahvCjpc\nzcrf2a9bGo5j28UCpayS4I4lfMbDJWPTLVbKI6vy08C/vEDO7Fbn3/yn\n-----END PRIVATE KEY-----");
+  const handleUseGeneratedKey = (type) => {
+    if (type === 'encrypt') {
+      setPublicKey(generatedPublicKey);
+    } else {
+      setPrivateKey(generatedPrivateKey);
+    }
   };
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Paper elevation={0} sx={{ p: 2, mb: 4, borderRadius: 2, bgcolor: 'background.default' }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={5}>
-            <ToggleButtonGroup
-              value={mode}
-              exclusive
-              onChange={handleModeChange}
-              aria-label="加密或解密模式"
-              fullWidth
-              size="small"
-            >
-              <ToggleButton value="encrypt" aria-label="加密">
-                <LockIcon sx={{ mr: 1 }} />
-                加密
-              </ToggleButton>
-              <ToggleButton value="decrypt" aria-label="解密">
-                <LockOpenIcon sx={{ mr: 1 }} />
-                解密
-              </ToggleButton>
-            </ToggleButtonGroup>
-          </Grid>
-          <Grid item xs={12} sm={4}>
-            {mode === "encrypt" && (
-              <FormControl fullWidth size="small">
-                <InputLabel id="ecc-encoding-label">输入编码</InputLabel>
-                <Select
-                  labelId="ecc-encoding-label"
-                  id="ecc-encoding"
-                  value={encoding}
-                  label="输入编码"
-                  onChange={(e) => setEncoding(e.target.value)}
-                >
-                  <MenuItem value="UTF8">UTF-8</MenuItem>
-                  <MenuItem value="ASCII">ASCII</MenuItem>
-                  <MenuItem value="Base64">Base64</MenuItem>
-                  <MenuItem value="Hex">十六进制</MenuItem>
-                </Select>
-              </FormControl>
-            )}
-          </Grid>
-          <Grid item xs={12} sm={3}>
-            <Button 
-              variant="outlined" 
-              color="primary" 
-              fullWidth
-              size="small"
-              onClick={generateKeyPair}
-            >
-              生成密钥对
-            </Button>
-          </Grid>
-        </Grid>
-      </Paper>
-      
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Box sx={{ position: 'relative' }}>
-            <TextField
-              fullWidth
-              label={mode === "encrypt" ? "明文" : "密文"}
-              multiline
-              rows={5}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
-              variant="outlined"
-              placeholder={mode === "encrypt" ? "输入需要加密的明文" : "输入需要解密的密文"}
-            />
-            <Button
-              variant="contained"
-              color="secondary"
-              size="small"
-              sx={{ 
-                position: 'absolute', 
-                right: 8, 
-                bottom: 8,
-                minWidth: 0,
-                width: 36,
-                height: 36,
-                borderRadius: '50%'
-              }}
-              component="label"
-            >
-              <UploadFileIcon fontSize="small" />
-              <input
-                type="file"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      setInput(event.target.result);
-                    };
-                    
-                    if (mode === "encrypt") {
-                      reader.readAsText(file);
-                    } else {
-                      reader.readAsText(file);
-                    }
-                  }
-                }}
-              />
-            </Button>
+      <Paper
+        elevation={1}
+        sx={{
+          p: 3,
+          mb: 3,
+          bgcolor: 'white',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+          <InfoIcon sx={{ color: '#757575', mr: 2, mt: 0.5 }} />
+          <Box>
+            <Typography variant="body1" sx={{ mb: 1, fontWeight: 500, color: '#424242' }}>
+              ECC-160是一种非对称加密算法，使用160位密钥长度。
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              ECC算法基于椭圆曲线上的离散对数问题，相比RSA，在相同安全强度下需要更短的密钥长度。ECC-160提供约80位的安全强度，适用于轻量级加密应用场景。
+            </Typography>
           </Box>
-        </Grid>
-        
-        {mode === "encrypt" ? (
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="ECC公钥"
-              multiline
-              rows={4}
-              value={publicKey}
-              onChange={(e) => setPublicKey(e.target.value)}
-              variant="outlined"
-              placeholder="输入ECC公钥 (PEM格式)"
-            />
-          </Grid>
-        ) : (
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="ECC私钥"
-              multiline
-              rows={4}
-              value={privateKey}
-              onChange={(e) => setPrivateKey(e.target.value)}
-              variant="outlined"
-              placeholder="输入ECC私钥 (PEM格式)"
-            />
-          </Grid>
-        )}
-        
-        <Grid item xs={12}>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            ECC-160是基于椭圆曲线密码学的加密算法，提供与RSA同等安全级别但密钥长度更短的加密方案。
-            {mode === "encrypt" 
-              ? " 加密过程使用接收者的公钥，只有拥有对应私钥的人才能解密。" 
-              : " 解密过程需要使用与加密公钥对应的私钥。"}
-          </Alert>
-        </Grid>
-        
-        <Grid item xs={12}>
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            onClick={handleProcess}
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : (mode === "encrypt" ? <LockIcon /> : <LockOpenIcon />)}
-            sx={{ py: 1.5 }}
-          >
-            {loading ? (mode === "encrypt" ? '加密中...' : '解密中...') : (mode === "encrypt" ? 'ECC-160加密' : 'ECC-160解密')}
-          </Button>
-        </Grid>
-        
-        {error && (
-          <Grid item xs={12}>
-            <Alert severity="error">{error}</Alert>
-          </Grid>
-        )}
-        
-        {result && (
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 2, position: 'relative', mt: 2 }}>
-              <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                {mode === "encrypt" ? 'ECC-160加密结果:' : 'ECC-160解密结果:'}
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  overflowWrap: 'break-word', 
-                  wordBreak: 'break-word',
-                  fontFamily: mode === "encrypt" ? 'monospace' : 'inherit',
-                  pr: 4,
-                  fontSize: '1rem',
-                  color: mode === "encrypt" ? '#3498db' : '#2ecc71'
-                }}
-              >
-                {result}
-              </Typography>
-              <Tooltip title="复制到剪贴板">
-                <IconButton 
-                  sx={{ position: 'absolute', top: 8, right: 8 }}
-                  onClick={() => copyToClipboard(result)}
+        </Box>
+      </Paper>
+
+      <Box sx={{ width: '100%', mb: 3 }}>
+        <Tabs
+          value={tabValue}
+          onChange={handleTabChange}
+          variant="fullWidth"
+          sx={{
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#757575',
+            },
+          }}
+        >
+          <Tab
+            icon={<LockIcon />}
+            label="加密"
+            id="rsa-tab-0"
+            aria-controls="rsa-tabpanel-0"
+            sx={{
+              '&.Mui-selected': {
+                color: '#424242',
+              },
+            }}
+          />
+          <Tab
+            icon={<LockOpenIcon />}
+            label="解密"
+            id="rsa-tab-1"
+            aria-controls="rsa-tabpanel-1"
+            sx={{
+              '&.Mui-selected': {
+                color: '#424242',
+              },
+            }}
+          />
+          <Tab
+            icon={<VpnKeyIcon />}
+            label="密钥对生成"
+            id="rsa-tab-2"
+            aria-controls="rsa-tabpanel-2"
+            sx={{
+              '&.Mui-selected': {
+                color: '#424242',
+              },
+            }}
+          />
+        </Tabs>
+      </Box>
+
+      <TabPanel value={tabValue} index={0}>
+        {/* <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}> */}
+        <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+          ECC公钥加密
+        </Typography>
+
+        <TextField
+          label="待加密文本"
+          multiline
+          rows={4}
+          value={plaintext}
+          onChange={(e) => setPlaintext(e.target.value)}
+          placeholder="输入需要加密的明文"
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 1,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+            }
+          }}
+        />
+
+        <TextField
+          label="ECC公钥"
+          multiline
+          rows={4}
+          value={publicKey}
+          onChange={(e) => setPublicKey(e.target.value)}
+          placeholder="输入ECC公钥"
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 3,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+              fontFamily: 'monospace',
+            }
+          }}
+          InputProps={{
+            endAdornment: generatedPublicKey ? (
+              <Tooltip title="使用生成的公钥">
+                <IconButton
+                  onClick={() => handleUseGeneratedKey('encrypt')}
+                  sx={{ position: 'absolute', right: 8, top: 8 }}
                 >
-                  <ContentCopyIcon fontSize="small" />
+                  <ContentCopyIcon />
                 </IconButton>
               </Tooltip>
-            </Paper>
-            
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                <strong>注意：</strong> {mode === "encrypt" 
-                  ? "ECC加密的密文只能使用对应的私钥解密，请确保安全保存私钥。" 
-                  : "解密成功完成。请记住ECC密钥对是配对使用的，需要妥善保管私钥。"}
-              </Typography>
-            </Box>
+            ) : null
+          }}
+        />
+        
+        {/* <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12}>
+            <FormControl fullWidth variant="outlined" sx={{ border: '1px solid #e0e0e0', borderRadius: 1 }}>
+              <InputLabel id="rsa-encoding-label">密文格式</InputLabel>
+              <Select
+                labelId="rsa-encoding-label"
+                id="rsa-encoding"
+                value={outputEncoding}
+                label="输出编码"
+                onChange={(e) => setOutputEncoding(e.target.value)}
+                sx={{
+                  '& .MuiSelect-select': {
+                    fontWeight: 500,
+                    color: '#000000',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: '#424242',
+                    fontSize: '1.5rem'
+                  }
+                }}
+              >
+                <MenuItem value="base64">Base64</MenuItem>
+                <MenuItem value="hex">十六进制</MenuItem>
+              </Select>
+            </FormControl>
           </Grid>
+        </Grid> */}
+
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={handleEncrypt}
+          disabled={encryptLoading}
+          startIcon={encryptLoading ? <CircularProgress size={20} /> : <LockIcon />}
+          sx={{
+            mb: 3,
+            bgcolor: '#616161',
+            '&:hover': {
+              bgcolor: '#424242',
+            },
+            py: 1.5,
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+        >
+          {encryptLoading ? '加密中...' : '使用公钥加密数据'}
+        </Button>
+
+        {encryptError && (
+          <Alert severity="error" sx={{ mb: 3 }}>{encryptError}</Alert>
         )}
-      </Grid>
+
+        <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
+          加密结果 
+        </Typography>
+
+        {encryptedText ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
+            <TextField
+              multiline
+              rows={4}
+              value={encryptedText}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: {
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+            />
+            <IconButton
+              onClick={() => copyToClipboard(encryptedText)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              ECC160加密结果将显示在此处
+            </Typography>
+          </Box>
+        )}
+
+        {/* </Paper>   */}
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={1}>
+        {/* <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}> */}
+        <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+          ECC私钥解密
+        </Typography>
+
+        <TextField
+          label="待解密文本"
+          multiline
+          rows={4}
+          value={ciphertext}
+          onChange={(e) => setCiphertext(e.target.value)}
+          placeholder={`输入加密数据`}
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 1,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+              fontFamily: 'monospace',
+            }
+          }}
+        />
+
+        <TextField
+          label="ECC私钥"
+          multiline
+          rows={4}
+          value={privateKey}
+          onChange={(e) => setPrivateKey(e.target.value)}
+          placeholder="输入ECC私钥"
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 3,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+              fontFamily: 'monospace',
+            }
+          }}
+          InputProps={{
+            endAdornment: generatedPrivateKey ? (
+              <Tooltip title="使用生成的私钥">
+                <IconButton
+                  onClick={() => handleUseGeneratedKey('decrypt')}
+                  sx={{ position: 'absolute', right: 8, top: 8 }}
+                >
+                  <ContentCopyIcon />
+                </IconButton>
+              </Tooltip>
+            ) : null
+          }}
+        />
+        
+        {/* <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12}>
+            <FormControl fullWidth variant="outlined" sx={{ border: '1px solid #e0e0e0', borderRadius: 1 }}>
+              <InputLabel id="rsa-encoding-label">密文格式</InputLabel>
+              <Select
+                labelId="rsa-encoding-label"
+                id="rsa-encoding"
+                value={outputEncoding}
+                label="输出编码"
+                onChange={(e) => setOutputEncoding(e.target.value)}
+                sx={{
+                  '& .MuiSelect-select': {
+                    fontWeight: 500,
+                    color: '#000000',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '& .MuiSvgIcon-root': {
+                    color: '#424242',
+                    fontSize: '1.5rem'
+                  }
+                }}
+              >
+                <MenuItem value="base64">Base64</MenuItem>
+                <MenuItem value="hex">十六进制</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid> */}
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={handleDecrypt}
+          disabled={decryptLoading}
+          startIcon={decryptLoading ? <CircularProgress size={20} /> : <LockOpenIcon />}
+          sx={{
+            mb: 3,
+            bgcolor: '#616161',
+            '&:hover': {
+              bgcolor: '#424242',
+            },
+            py: 1.5,
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+        >
+          {decryptLoading ? '解密中...' : '使用私钥解密数据'}
+        </Button>
+
+        {decryptError && (
+          <Alert severity="error" sx={{ mb: 3 }}>{decryptError}</Alert>
+        )}
+
+
+        {/* <Paper elevation={1} sx={{ p: 3, position: 'relative', bgcolor: 'white' }}> */}
+        <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
+          解密结果
+        </Typography>
+
+        {decryptedText ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
+            <TextField
+              multiline
+              rows={4}
+              value={decryptedText}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: {
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+            />
+            <IconButton
+              onClick={() => copyToClipboard(decryptedText)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              ECC160解密结果将显示在此处
+            </Typography>
+          </Box>
+        )}
+        {/* </Paper> */}
+      </TabPanel>
+
+      <TabPanel value={tabValue} index={2}>
+        {/* <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}> */}
+        <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+          ECC密钥对生成
+        </Typography>
+
+        <Button
+          variant="contained"
+          fullWidth
+          onClick={handleGenerateKeyPair}
+          disabled={keyGenLoading}
+          startIcon={keyGenLoading ? <CircularProgress size={20} /> : <VpnKeyIcon />}
+          sx={{
+            mb: 3,
+            bgcolor: '#616161',
+            '&:hover': {
+              bgcolor: '#424242',
+            },
+            py: 1.5,
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+        >
+          {keyGenLoading ? '生成中...' : '生成ECC-160密钥对'}
+        </Button>
+
+        {keyGenError && (
+          <Alert severity="error" sx={{ mb: 3 }}>{keyGenError}</Alert>
+        )}
+        {/* </Paper> */}
+
+        {generatedPublicKey ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
+            <TextField
+              label="生成的公钥"
+              multiline
+              rows={4}
+              value={generatedPublicKey}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: {
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+              sx={{ mb: 2 }}
+            />
+            <IconButton
+              onClick={() => copyToClipboard(generatedPublicKey)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+            mt: 2
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              ECC公钥将显示在此处
+            </Typography>
+          </Box>
+        )}
+
+        {generatedPrivateKey ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
+            <TextField
+              multiline
+              rows={4}
+              label="生成的私钥"
+              value={generatedPrivateKey}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: {
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+              sx={{ mb: 2 }}
+            />
+            <IconButton
+              onClick={() => copyToClipboard(generatedPrivateKey)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+            mt: 2
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              ECC私钥将显示在此处
+            </Typography>
+          </Box>
+        )}
+
+      </TabPanel>
+
+      <Snackbar
+        open={showCopiedSnackbar}
+        autoHideDuration={2000}
+        message="已复制到剪贴板"
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Box>
   );
 };

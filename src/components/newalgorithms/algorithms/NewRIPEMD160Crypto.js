@@ -7,62 +7,38 @@ import {
   Paper, 
   Typography, 
   Divider,
-  CircularProgress,
   IconButton,
-  Tooltip,
-  Alert,
+  Snackbar,
   FormControl,
   InputLabel,
   Select,
   MenuItem
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import FingerprintIcon from '@mui/icons-material/Fingerprint';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-
-// 模拟API调用
-const ripemd160Hash = async (input, encoding) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // 模拟哈希值
-      const mockHash = Array(40).fill(0).map(() => 
-        Math.floor(Math.random() * 16).toString(16)
-      ).join('');
-      
-      resolve({
-        data: {
-          success: true,
-          data: mockHash
-        }
-      });
-    }, 500);
-  });
-};
+import InfoIcon from '@mui/icons-material/Info';
+import { ripemd160Hash } from '../../../api/ripemd160';
 
 const NewRIPEMD160Crypto = () => {
   const [input, setInput] = useState("");
-  const [encoding, setEncoding] = useState("UTF8");
   const [outputFormat, setOutputFormat] = useState("hex");
   const [hashResult, setHashResult] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
-
+  const [showCopiedSnackbar, setShowCopiedSnackbar] = useState(false);
   const handleHash = async () => {
-    if (!input.trim()) {
-      setError("请输入要计算哈希值的文本");
-      return;
-    }
-    
     setLoading(true);
     setError("");
-    
+
     try {
-      const response = await ripemd160Hash(input, encoding);
+      const response = await ripemd160Hash(input, outputFormat);
       
-      if (response.data && response.data.success) {
-        setHashResult(response.data.data);
+      if (response && response.data) {
+        if (response.data.status !== undefined && response.data.status !== 0) {
+          throw new Error(response.data.message || '哈希计算失败');
+        }
+        setHashResult(response.data.result || '');
       } else {
-        setError(response.data?.message || "哈希计算失败");
+        setError(response.data.message || "哈希计算失败");
       }
     } catch (error) {
       setError("哈希计算过程发生错误: " + (error.message || "未知错误"));
@@ -71,6 +47,13 @@ const NewRIPEMD160Crypto = () => {
     }
   };
 
+  const handleInputChange = (e) => {
+    setInput(e.target.value);
+    setError('');
+  };
+  const handleOutputFormatChange = (e) => {
+    setOutputFormat(e.target.value);
+  };
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text)
       .then(() => {
@@ -80,37 +63,109 @@ const NewRIPEMD160Crypto = () => {
         console.error('复制失败:', err);
       });
   };
+  const handleCloseSnackbar = () => {
+    setShowCopiedSnackbar(false);
+  };
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Paper elevation={0} sx={{ p: 2, mb: 4, borderRadius: 2, bgcolor: 'background.default' }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="ripemd160-encoding-label">输入编码</InputLabel>
+      <Paper
+        elevation={1}
+        sx={{
+          p: 3,
+          mb: 3,
+          bgcolor: 'white',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+          <InfoIcon sx={{ color: '#757575', mr: 2, mt: 0.5 }} />
+          <Box>
+            <Typography variant="body1" sx={{ mb: 1, fontWeight: 500, color: '#424242' }}>
+              RIPEMD-160是一种密码散列函数，生成160位(20字节)的哈希值，通常表示为40个十六进制字符。         
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              RIPEMD-160常用于比特币地址生成等密码应用中。
+            </Typography>
+          </Box>
+        </Box>
+      </Paper>
+
+      <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}>
+        <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+          哈希设置
+        </Typography>
+
+        <TextField
+          label="输入文本"
+          multiline
+          rows={8}
+          value={input}
+          onChange={handleInputChange}
+          placeholder="在此输入要哈希的文本..."
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 3,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+            }
+          }}
+          error={!!error && error.includes('文本')}
+          helperText={error && error.includes('文本') ? error : ''}
+        />
+
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12}>
+            <FormControl fullWidth variant="outlined" sx={{ border: '1px solid #e0e0e0', borderRadius: 1 }}>
+              <InputLabel id="output-format-label">输出格式</InputLabel>
               <Select
-                labelId="ripemd160-encoding-label"
-                id="ripemd160-encoding"
-                value={encoding}
-                label="输入编码"
-                onChange={(e) => setEncoding(e.target.value)}
-              >
-                <MenuItem value="UTF8">UTF-8</MenuItem>
-                <MenuItem value="ASCII">ASCII</MenuItem>
-                <MenuItem value="Base64">Base64</MenuItem>
-                <MenuItem value="Hex">十六进制</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="ripemd160-output-format-label">输出格式</InputLabel>
-              <Select
-                labelId="ripemd160-output-format-label"
-                id="ripemd160-output-format"
+                labelId="output-format-label"
                 value={outputFormat}
+                onChange={handleOutputFormatChange}
                 label="输出格式"
-                onChange={(e) => setOutputFormat(e.target.value)}
+                sx={{
+                  '& .MuiSelect-select': {
+                    fontWeight: 500,
+                    color: '#000000',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '& .MuiSvgIcon-root': { 
+                    color: '#424242',
+                    fontSize: '1.5rem'
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      borderRadius: 1,
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                    }
+                  }
+                }}
               >
                 <MenuItem value="hex">十六进制</MenuItem>
                 <MenuItem value="base64">Base64</MenuItem>
@@ -118,127 +173,113 @@ const NewRIPEMD160Crypto = () => {
             </FormControl>
           </Grid>
         </Grid>
-      </Paper>
-      
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Box sx={{ position: 'relative' }}>
+
+        <Button
+          variant="contained"
+          onClick={handleHash}
+          disabled={loading}
+          fullWidth
+          size="large"
+          sx={{
+            mb: 3,
+            bgcolor: '#616161',
+            '&:hover': {
+              bgcolor: '#424242',
+            },
+            py: 1.5,
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+        >
+          {loading ? '哈希计算中...' : '计算RIPEMD-160哈希'}
+        </Button>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
+          RIPEMD-160哈希结果
+        </Typography>
+
+        {hashResult ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
             <TextField
-              fullWidth
-              label="输入文本"
               multiline
-              rows={6}
-              value={input}
-              onChange={(e) => setInput(e.target.value)}
+              rows={4}
+              value={hashResult}
               variant="outlined"
-              placeholder="输入需要计算RIPEMD-160哈希值的文本"
-            />
-            <Button
-              variant="contained"
-              color="secondary"
-              size="small"
-              sx={{ 
-                position: 'absolute', 
-                right: 8, 
-                bottom: 8,
-                minWidth: 0,
-                width: 36,
-                height: 36,
-                borderRadius: '50%'
-              }}
-              component="label"
-            >
-              <UploadFileIcon fontSize="small" />
-              <input
-                type="file"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      setInput(event.target.result);
-                    };
-                    
-                    if (encoding === 'UTF8' || encoding === 'ASCII') {
-                      reader.readAsText(file);
-                    } else if (encoding === 'Base64') {
-                      reader.readAsDataURL(file);
-                    } else {
-                      reader.readAsArrayBuffer(file);
-                    }
-                  }
-                }}
-              />
-            </Button>
-          </Box>
-        </Grid>
-        
-        <Grid item xs={12}>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            RIPEMD-160是一种密码散列函数，生成160位(20字节)的哈希值，通常表示为40个十六进制字符。
-            RIPEMD-160常用于比特币地址生成等密码应用中。
-          </Alert>
-        </Grid>
-        
-        <Grid item xs={12}>
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            onClick={handleHash}
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : <FingerprintIcon />}
-            sx={{ py: 1.5 }}
-          >
-            {loading ? '计算中...' : '计算RIPEMD-160哈希值'}
-          </Button>
-        </Grid>
-        
-        {error && (
-          <Grid item xs={12}>
-            <Alert severity="error">{error}</Alert>
-          </Grid>
-        )}
-        
-        {hashResult && (
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 2, position: 'relative', mt: 2 }}>
-              <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                RIPEMD-160哈希结果 ({outputFormat === 'hex' ? '十六进制' : 'Base64'}):
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  overflowWrap: 'break-word', 
-                  wordBreak: 'break-word',
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: {
                   fontFamily: 'monospace',
-                  pr: 4,
-                  fontSize: '1rem',
-                  color: outputFormat === 'hex' ? '#2ecc71' : '#3498db'
-                }}
-              >
-                {hashResult}
-              </Typography>
-              <Tooltip title="复制到剪贴板">
-                <IconButton 
-                  sx={{ position: 'absolute', top: 8, right: 8 }}
-                  onClick={() => copyToClipboard(hashResult)}
-                >
-                  <ContentCopyIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Paper>
-            
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+            />
+            <IconButton
+              onClick={copyToClipboard}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+
             <Box sx={{ mt: 3 }}>
               <Typography variant="body2" color="text.secondary">
-                <strong>注意：</strong> RIPEMD-160是单向哈希函数，不可逆。相同的输入总是产生相同的输出，但从输出无法推导出原始输入。
+                • RIPEMD-160哈希是160位（20字节）固定长度
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                • 结果以{outputFormat === 'hex' ? '40位十六进制字符' : 'Base64编码'}表示
+              </Typography>
+              <Typography variant="body2" color="text.secondary">
+                • 即使输入发生微小变化，输出也会完全不同
               </Typography>
             </Box>
-          </Grid>
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              RIPEMD-160哈希结果将显示在此处
+            </Typography>
+          </Box>
         )}
-      </Grid>
+
+        {error && !error.includes('文本') && (
+          <Typography color="error" sx={{ mt: 2 }}>
+            {error}
+          </Typography>
+        )}
+      </Paper>
+
+      <Snackbar
+        open={showCopiedSnackbar}
+        autoHideDuration={3000}
+        onClose={handleCloseSnackbar}
+        message="已复制到剪贴板！"
+      />
     </Box>
   );
 };

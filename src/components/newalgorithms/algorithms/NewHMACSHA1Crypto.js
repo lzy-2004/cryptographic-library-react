@@ -1,74 +1,76 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  Button, 
-  TextField, 
-  Grid, 
-  Paper, 
-  Typography, 
-  Divider,
-  CircularProgress,
-  IconButton,
-  Tooltip,
-  Alert,
+import {
+  Box,
+  Button,
+  TextField,
+  Typography,
+  Paper,
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  IconButton,
+  Snackbar,
+  Grid,
+  Divider
 } from '@mui/material';
+import { HMACSHA1 } from '../../../api/hmacsha1';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
-import LockIcon from '@mui/icons-material/Lock';
-import UploadFileIcon from '@mui/icons-material/UploadFile';
-
-// 模拟API调用
-const hmacSha1 = async (message, key, encoding) => {
-  return new Promise((resolve) => {
-    setTimeout(() => {
-      // 模拟HMAC-SHA1结果
-      const mockHash = Array(40).fill(0).map(() => 
-        Math.floor(Math.random() * 16).toString(16)
-      ).join('');
-      
-      resolve({
-        data: {
-          success: true,
-          data: mockHash
-        }
-      });
-    }, 500);
-  });
-};
+import InfoIcon from '@mui/icons-material/Info';
 
 const NewHMACSHA1Crypto = () => {
-  const [message, setMessage] = useState("");
-  const [key, setKey] = useState("");
-  const [encoding, setEncoding] = useState("UTF8");
+  const [message, setMessage] = useState('');
+  const [key, setKey] = useState('');
   const [outputFormat, setOutputFormat] = useState("hex");
-  const [hashResult, setHashResult] = useState("");
+  const [result, setResult] = useState('');
+  const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  const [error, setError] = useState("");
+  const [showCopiedSnackbar, setShowCopiedSnackbar] = useState(false);
+
+  
+  const handleOutputFormatChange = (e) => {
+    setOutputFormat(e.target.value);
+  };
+
+  const handleMessageChange = (e) => {
+    setMessage(e.target.value);
+  };
+
+  const handleKeyChange = (e) => {
+    setKey(e.target.value);
+  };
+
+  const copyToClipboard = () => {
+    if (result) {
+      navigator.clipboard.writeText(result)
+        .then(() => {
+          setShowCopiedSnackbar(true);
+        })
+        .catch(err => {
+          setError('复制到剪贴板失败: ' + err.message);
+        });
+    }
+  };
+
+  const handleCloseSnackbar = () => {
+    setShowCopiedSnackbar(false);
+  };
 
   const handleHmac = async () => {
-    if (!message.trim()) {
-      setError("请输入消息内容");
-      return;
-    }
-    
-    if (!key.trim()) {
-      setError("请输入密钥");
-      return;
-    }
-    
     setLoading(true);
     setError("");
     
     try {
-      const response = await hmacSha1(message, key, encoding);
+      // 默认使用UTF8编码
+      const response = await HMACSHA1(key, message,outputFormat);
       
-      if (response.data && response.data.success) {
-        setHashResult(response.data.data);
+      if (response && response.data) {
+        if (response.data.status !== undefined && response.data.status !== 0) {
+          throw new Error(response.data.message || 'HMAC计算失败');
+        }
+        setResult(response.data.result || '');
       } else {
-        setError(response.data?.message || "HMAC计算失败");
+        setError(response.data.message || "HMAC计算失败");
       }
     } catch (error) {
       setError("HMAC计算过程发生错误: " + (error.message || "未知错误"));
@@ -77,46 +79,138 @@ const NewHMACSHA1Crypto = () => {
     }
   };
 
-  const copyToClipboard = (text) => {
-    navigator.clipboard.writeText(text)
-      .then(() => {
-        console.log('文本已复制到剪贴板');
-      })
-      .catch(err => {
-        console.error('复制失败:', err);
-      });
-  };
-
   return (
     <Box sx={{ width: '100%' }}>
-      <Paper elevation={0} sx={{ p: 2, mb: 4, borderRadius: 2, bgcolor: 'background.default' }}>
-        <Grid container spacing={2} alignItems="center">
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="hmacsha1-encoding-label">输入编码</InputLabel>
+      <Paper
+        elevation={1}
+        sx={{
+          p: 3,
+          mb: 3,
+          bgcolor: 'white',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+          <InfoIcon sx={{ color: '#757575', mr: 2, mt: 0.5 }} />
+          <Box>
+            <Typography variant="body1" sx={{ mb: 1, fontWeight: 500, color: '#424242' }}>
+              HMAC-SHA1是一种基于SHA1哈希函数的消息认证码，用于验证数据完整性和来源真实性。
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              HMAC-SHA1常用于API认证、数据完整性校验、安全通信等场景，通过使用密钥将其与消息组合后进行哈希运算，确保消息的完整性和真实性。
+            </Typography>
+          </Box>
+        </Box>
+      </Paper>
+
+      <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}>
+        <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+          参数设置
+        </Typography>
+
+        <TextField
+          label="密钥（key）"
+          multiline
+          rows={4}
+          value={key}
+          onChange={handleKeyChange}
+          placeholder="在此输入密钥..."
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 1,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+            }
+          }}
+          error={!!error && error.includes('密钥')}
+          helperText={error && error.includes('密钥') ? error : ''}
+        />
+        <TextField
+          label="消息（message）"
+          multiline
+          rows={4}
+          value={message}
+          onChange={handleMessageChange}
+          placeholder="在此输入消息..."
+          fullWidth
+          variant="outlined"
+          margin="normal"
+          sx={{
+            mb: 3,
+            '& .MuiOutlinedInput-root': {
+              '& fieldset': {
+                borderColor: '#e0e0e0',
+                borderWidth: '1px',
+              },
+              '&:hover fieldset': {
+                borderColor: '#9e9e9e',
+              },
+              '&.Mui-focused fieldset': {
+                borderColor: '#757575',
+              },
+            },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+            }
+          }}
+          error={!!error && error.includes('消息')}
+          helperText={error && error.includes('消息') ? error : ''}
+        />
+        
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12}>
+            <FormControl fullWidth variant="outlined" sx={{ border: '1px solid #e0e0e0', borderRadius: 1 }}>
+              <InputLabel id="output-format-label">输出格式</InputLabel>
               <Select
-                labelId="hmacsha1-encoding-label"
-                id="hmacsha1-encoding"
-                value={encoding}
-                label="输入编码"
-                onChange={(e) => setEncoding(e.target.value)}
-              >
-                <MenuItem value="UTF8">UTF-8</MenuItem>
-                <MenuItem value="ASCII">ASCII</MenuItem>
-                <MenuItem value="Base64">Base64</MenuItem>
-                <MenuItem value="Hex">十六进制</MenuItem>
-              </Select>
-            </FormControl>
-          </Grid>
-          <Grid item xs={12} sm={6}>
-            <FormControl fullWidth size="small">
-              <InputLabel id="hmacsha1-output-format-label">输出格式</InputLabel>
-              <Select
-                labelId="hmacsha1-output-format-label"
-                id="hmacsha1-output-format"
+                labelId="output-format-label"
                 value={outputFormat}
+                onChange={handleOutputFormatChange}
                 label="输出格式"
-                onChange={(e) => setOutputFormat(e.target.value)}
+                sx={{
+                  '& .MuiSelect-select': {
+                    fontWeight: 500,
+                    color: '#000000',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '& .MuiSvgIcon-root': { 
+                    color: '#424242',
+                    fontSize: '1.5rem'
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      borderRadius: 1,
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                    }
+                  }
+                }}
               >
                 <MenuItem value="hex">十六进制</MenuItem>
                 <MenuItem value="base64">Base64</MenuItem>
@@ -124,182 +218,104 @@ const NewHMACSHA1Crypto = () => {
             </FormControl>
           </Grid>
         </Grid>
-      </Paper>
-      
-      <Grid container spacing={3}>
-        <Grid item xs={12}>
-          <Box sx={{ position: 'relative' }}>
+
+        <Button
+          variant="contained"
+          onClick={handleHmac}
+          disabled={loading}
+          fullWidth
+          size="large"
+          sx={{
+            mb: 3,
+            bgcolor: '#616161',
+            '&:hover': {
+              bgcolor: '#424242',
+            },
+            py: 1.5,
+            fontSize: '1rem',
+            fontWeight: 'bold'
+          }}
+        >
+          {loading ? 'HMAC计算中...' : '计算HMAC-SHA1值'}
+        </Button>
+
+        <Divider sx={{ my: 3 }} />
+
+        <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
+          <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
+          HMAC-SHA1 结果
+        </Typography>
+
+        {result ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
             <TextField
-              fullWidth
-              label="密钥"
               multiline
-              rows={2}
-              value={key}
-              onChange={(e) => setKey(e.target.value)}
+              rows={4}
+              value={result}
               variant="outlined"
-              placeholder="输入HMAC-SHA1计算所需的密钥"
-            />
-            <Button
-              variant="contained"
-              color="secondary"
-              size="small"
-              sx={{ 
-                position: 'absolute', 
-                right: 8, 
-                bottom: 8,
-                minWidth: 0,
-                width: 36,
-                height: 36,
-                borderRadius: '50%'
-              }}
-              component="label"
-            >
-              <UploadFileIcon fontSize="small" />
-              <input
-                type="file"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      setKey(event.target.result);
-                    };
-                    
-                    if (encoding === 'UTF8' || encoding === 'ASCII') {
-                      reader.readAsText(file);
-                    } else if (encoding === 'Base64') {
-                      reader.readAsDataURL(file);
-                    } else {
-                      reader.readAsArrayBuffer(file);
-                    }
-                  }
-                }}
-              />
-            </Button>
-          </Box>
-        </Grid>
-        
-        <Grid item xs={12}>
-          <Box sx={{ position: 'relative' }}>
-            <TextField
               fullWidth
-              label="消息"
-              multiline
-              rows={6}
-              value={message}
-              onChange={(e) => setMessage(e.target.value)}
-              variant="outlined"
-              placeholder="输入需要计算HMAC-SHA1值的消息文本"
-            />
-            <Button
-              variant="contained"
-              color="secondary"
-              size="small"
-              sx={{ 
-                position: 'absolute', 
-                right: 8, 
-                bottom: 8,
-                minWidth: 0,
-                width: 36,
-                height: 36,
-                borderRadius: '50%'
-              }}
-              component="label"
-            >
-              <UploadFileIcon fontSize="small" />
-              <input
-                type="file"
-                hidden
-                onChange={(e) => {
-                  const file = e.target.files[0];
-                  if (file) {
-                    const reader = new FileReader();
-                    reader.onload = (event) => {
-                      setMessage(event.target.result);
-                    };
-                    
-                    if (encoding === 'UTF8' || encoding === 'ASCII') {
-                      reader.readAsText(file);
-                    } else if (encoding === 'Base64') {
-                      reader.readAsDataURL(file);
-                    } else {
-                      reader.readAsArrayBuffer(file);
-                    }
-                  }
-                }}
-              />
-            </Button>
-          </Box>
-        </Grid>
-        
-        <Grid item xs={12}>
-          <Alert severity="info" sx={{ mb: 3 }}>
-            HMAC-SHA1是基于SHA1哈希函数的消息认证码，用于验证数据完整性和来源真实性。需要提供密钥和消息来计算HMAC值。
-          </Alert>
-        </Grid>
-        
-        <Grid item xs={12}>
-          <Button
-            variant="contained"
-            color="primary"
-            fullWidth
-            onClick={handleHmac}
-            disabled={loading}
-            startIcon={loading ? <CircularProgress size={20} /> : <LockIcon />}
-            sx={{ py: 1.5 }}
-          >
-            {loading ? '计算中...' : '计算HMAC-SHA1值'}
-          </Button>
-        </Grid>
-        
-        {error && (
-          <Grid item xs={12}>
-            <Alert severity="error">{error}</Alert>
-          </Grid>
-        )}
-        
-        {hashResult && (
-          <Grid item xs={12}>
-            <Paper variant="outlined" sx={{ p: 2, position: 'relative', mt: 2 }}>
-              <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                HMAC-SHA1结果 ({outputFormat === 'hex' ? '十六进制' : 'Base64'}):
-              </Typography>
-              <Divider sx={{ mb: 2 }} />
-              <Typography 
-                variant="body2" 
-                sx={{ 
-                  overflowWrap: 'break-word', 
-                  wordBreak: 'break-word',
+              InputProps={{
+                readOnly: true,
+                sx: {
                   fontFamily: 'monospace',
-                  pr: 4,
-                  fontSize: '1rem',
-                  color: outputFormat === 'hex' ? '#2ecc71' : '#3498db'
-                }}
-              >
-                {hashResult}
-              </Typography>
-              <Tooltip title="复制到剪贴板">
-                <IconButton 
-                  sx={{ position: 'absolute', top: 8, right: 8 }}
-                  onClick={() => copyToClipboard(hashResult)}
-                >
-                  <ContentCopyIcon fontSize="small" />
-                </IconButton>
-              </Tooltip>
-            </Paper>
-            
-            <Box sx={{ mt: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                <strong>注意：</strong> HMAC-SHA1用于确保消息完整性和真实性，通过使用密钥将其与消息组合后进行哈希运算。
-                常用于API认证、数据完整性校验等场景。
-              </Typography>
-            </Box>
-          </Grid>
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+            />
+            <IconButton
+              onClick={copyToClipboard}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              HMAC-SHA1结果将显示在此处
+            </Typography>
+          </Box>
         )}
-      </Grid>
+
+        {error && !error.includes('密钥') && !error.includes('消息') && (
+          <Typography color="error" sx={{ mt: 2 }}>
+            {error}
+          </Typography>
+        )}
+      </Paper>
+
+      <Snackbar
+        open={showCopiedSnackbar}
+        autoHideDuration={3000}
+        onClose={handleCloseSnackbar}
+        message="已复制到剪贴板！"
+      />
     </Box>
   );
 };
 
-export default NewHMACSHA1Crypto; 
+export default NewHMACSHA1Crypto;

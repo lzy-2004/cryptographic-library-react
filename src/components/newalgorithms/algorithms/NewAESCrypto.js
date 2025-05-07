@@ -12,9 +12,7 @@ import {
   MenuItem,
   Tabs,
   Tab,
-  Alert,
   Divider,
-  CircularProgress,
   IconButton,
   Tooltip,
   Snackbar,
@@ -24,69 +22,15 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import InfoIcon from '@mui/icons-material/Info';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
-import VisibilityIcon from '@mui/icons-material/Visibility';
-import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import SyncIcon from '@mui/icons-material/Sync';
 import { aesEncrypt, aesDecrypt } from '../../../api/aes';
 
-// 由于API中没有对应的密钥生成功能，我们在前端模拟此功能
-const generateKey = async ({ keySize }) => {
-  try {
-    // 生成指定长度的随机密钥和IV
-    const generateRandomBytes = (length) => {
-      let result = '';
-      const characters = 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/';
-      const charactersLength = characters.length;
-      for (let i = 0; i < length; i++) {
-        result += characters.charAt(Math.floor(Math.random() * charactersLength));
-      }
-      return btoa(result); // 使用Base64编码
-    };
-
-    // 根据密钥大小计算字节长度
-    const keyBytes = keySize / 8;
-    
-    return {
-      success: true,
-      data: {
-        key: generateRandomBytes(keyBytes),
-        iv: generateRandomBytes(16) // AES的IV通常为16字节
-      }
-    };
-  } catch (error) {
-    return {
-      success: false,
-      message: error.message || "生成密钥时发生错误"
-    };
-  }
-};
-
-const TabPanel = (props) => {
-  const { children, value, index, ...other } = props;
-
-  return (
-    <div
-      role="tabpanel"
-      hidden={value !== index}
-      id={`aes-tabpanel-${index}`}
-      aria-labelledby={`aes-tab-${index}`}
-      {...other}
-    >
-      {value === index && (
-        <Box sx={{ p: 3 }}>
-          {children}
-        </Box>
-      )}
-    </div>
-  );
-};
 
 const NewAESCrypto = () => {
   const [mode, setMode] = useState(0); // 0 = 加密, 1 = 解密
   const [inputText, setInputText] = useState('');
   const [key, setKey] = useState('');
   const [iv, setIv] = useState('');
-  const [showKey, setShowKey] = useState(true);
   const [showIv, setShowIv] = useState(true);
   const [keySize, setKeySize] = useState('128');
   const [cipherMode, setCipherMode] = useState('ecb');
@@ -478,7 +422,7 @@ const NewAESCrypto = () => {
                   '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
                     borderColor: 'transparent'
                   },
-                  '& .MuiSvgIcon-root': { // 强调下拉箭头
+                  '& .MuiSvgIcon-root': {
                     color: '#424242',
                     fontSize: '1.5rem'
                   }

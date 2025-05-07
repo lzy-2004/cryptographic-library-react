@@ -13,17 +13,17 @@ import {
   Alert,
   Tabs,
   Tab,
-  Switch,
-  FormControlLabel,
   FormControl,
   InputLabel,
   Select,
-  MenuItem
+  MenuItem,
+  Snackbar
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
+import InfoIcon from '@mui/icons-material/Info';
 import { rsa1024Encrypt, rsa1024Decrypt, rsa1024GenerateKey } from '../../../api/rsa1024';
 
 const TabPanel = (props) => {
@@ -48,11 +48,11 @@ const TabPanel = (props) => {
 
 const NewRSA1024Crypto = () => {
   const [tabValue, setTabValue] = useState(0);
-  const [padding, setPadding] = useState("PKCS1");
   
   // 加密状态
   const [plaintext, setPlaintext] = useState("");
   const [publicKey, setPublicKey] = useState("");
+  const [encryptModulus, setEncryptModulus] = useState("")
   const [encryptedText, setEncryptedText] = useState("");
   const [encryptLoading, setEncryptLoading] = useState(false);
   const [encryptError, setEncryptError] = useState("");
@@ -60,6 +60,7 @@ const NewRSA1024Crypto = () => {
   // 解密状态
   const [ciphertext, setCiphertext] = useState("");
   const [privateKey, setPrivateKey] = useState("");
+  const [decryptModulus, setDecryptModulus] = useState("")
   const [decryptedText, setDecryptedText] = useState("");
   const [decryptLoading, setDecryptLoading] = useState(false);
   const [decryptError, setDecryptError] = useState("");
@@ -67,20 +68,21 @@ const NewRSA1024Crypto = () => {
   // 密钥生成状态
   const [generatedPublicKey, setGeneratedPublicKey] = useState("");
   const [generatedPrivateKey, setGeneratedPrivateKey] = useState("");
+  const [generatedModulus, setGeneratedModulus] = useState("")
   const [keyGenLoading, setKeyGenLoading] = useState(false);
   const [keyGenError, setKeyGenError] = useState("");
   
-  // 高级选项
+  // 输出编码
   const [outputEncoding, setOutputEncoding] = useState("base64");
-  const [showAdvancedOptions, setShowAdvancedOptions] = useState(false);
+  const [showCopiedSnackbar, setShowCopiedSnackbar] = useState(false);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
 
   const handleEncrypt = async () => {
-    if (!plaintext || !publicKey) {
-      setEncryptError("请输入待加密文本和公钥");
+    if (!plaintext || !publicKey||!encryptModulus) {
+      setEncryptError("请输入待加密文本、公钥和模数");
       return;
     }
     
@@ -88,10 +90,13 @@ const NewRSA1024Crypto = () => {
     setEncryptError("");
     
     try {
-      const response = await rsa1024Encrypt(plaintext, publicKey, "", outputEncoding);
+      const response = await rsa1024Encrypt(plaintext, publicKey, encryptModulus, outputEncoding);
       
-      if (response.data && response.data.success) {
-        setEncryptedText(response.data.data);
+      if (response && response.data) {
+        if (response.data.status !== undefined && response.data.status !== 0) {
+          throw new Error(response.data.message || '加密失败');
+        }
+        setEncryptedText(response.data.result);
       } else {
         setEncryptError(response.data?.message || "加密失败");
       }
@@ -103,8 +108,8 @@ const NewRSA1024Crypto = () => {
   };
 
   const handleDecrypt = async () => {
-    if (!ciphertext || !privateKey) {
-      setDecryptError("请输入待解密文本和私钥");
+    if (!ciphertext || !privateKey||!decryptModulus) {
+      setDecryptError("请输入待解密文本、私钥和模数");
       return;
     }
     
@@ -112,10 +117,13 @@ const NewRSA1024Crypto = () => {
     setDecryptError("");
     
     try {
-      const response = await rsa1024Decrypt(ciphertext, privateKey, "", outputEncoding);
+      const response = await rsa1024Decrypt(ciphertext, privateKey, decryptModulus, outputEncoding);
       
-      if (response.data && response.data.success) {
-        setDecryptedText(response.data.data);
+      if (response && response.data) {
+        if (response.data.status !== undefined && response.data.status !== 0) {
+          throw new Error(response.data.message || '解密失败');
+        }
+        setDecryptedText(response.data.result);
       } else {
         setDecryptError(response.data?.message || "解密失败");
       }
@@ -133,9 +141,10 @@ const NewRSA1024Crypto = () => {
     try {
       const response = await rsa1024GenerateKey();
       
-      if (response.data && response.data.success) {
-        setGeneratedPublicKey(response.data.data.publicKey);
-        setGeneratedPrivateKey(response.data.data.privateKey);
+      if (response && response.data) {
+        setGeneratedPublicKey(response.data.publicKey);
+        setGeneratedPrivateKey(response.data.privateKey);
+        setGeneratedModulus(response.data.modulus);
       } else {
         setKeyGenError(response.data?.message || "密钥生成失败");
       }
@@ -149,7 +158,8 @@ const NewRSA1024Crypto = () => {
   const copyToClipboard = (text) => {
     navigator.clipboard.writeText(text)
       .then(() => {
-        console.log('文本已复制到剪贴板');
+        setShowCopiedSnackbar(true);
+        setTimeout(() => setShowCopiedSnackbar(false), 2000);
       })
       .catch(err => {
         console.error('复制失败:', err);
@@ -159,371 +169,777 @@ const NewRSA1024Crypto = () => {
   const handleUseGeneratedKey = (type) => {
     if (type === 'encrypt') {
       setPublicKey(generatedPublicKey);
+      setEncryptModulus(generatedModulus);
     } else {
       setPrivateKey(generatedPrivateKey);
+      setDecryptModulus(generatedModulus);
     }
   };
 
   return (
     <Box sx={{ width: '100%' }}>
-      <Box sx={{ borderBottom: 1, borderColor: 'divider', mb: 2 }}>
+      <Paper
+        elevation={1}
+        sx={{
+          p: 3,
+          mb: 3,
+          bgcolor: 'white',
+        }}
+      >
+        <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
+          <InfoIcon sx={{ color: '#757575', mr: 2, mt: 0.5 }} />
+          <Box>
+            <Typography variant="body1" sx={{ mb: 1, fontWeight: 500, color: '#424242' }}>
+              RSA-1024是一种非对称加密算法，使用1024位密钥长度。
+            </Typography>
+            <Typography variant="body2" color="text.secondary">
+              RSA算法基于大数分解的困难性，广泛用于数据加密和数字签名。RSA-1024每次最多只能加密约117字节，对于更长的数据，应使用混合加密方案。
+            </Typography>
+          </Box>
+        </Box>
+      </Paper>
+
+      <Box sx={{ width: '100%', mb: 3 }}>
         <Tabs 
           value={tabValue} 
           onChange={handleTabChange} 
           variant="fullWidth"
-          textColor="primary"
-          indicatorColor="primary"
-          aria-label="RSA操作选项卡"
+          sx={{
+            '& .MuiTabs-indicator': {
+              backgroundColor: '#757575',
+            },
+          }}
         >
-          <Tab icon={<LockIcon />} label="加密" id="rsa-tab-0" aria-controls="rsa-tabpanel-0" />
-          <Tab icon={<LockOpenIcon />} label="解密" id="rsa-tab-1" aria-controls="rsa-tabpanel-1" />
-          <Tab icon={<VpnKeyIcon />} label="密钥对生成" id="rsa-tab-2" aria-controls="rsa-tabpanel-2" />
+          <Tab 
+            icon={<LockIcon />} 
+            label="加密" 
+            id="rsa-tab-0" 
+            aria-controls="rsa-tabpanel-0"
+            sx={{
+              '&.Mui-selected': {
+                color: '#424242',
+              },
+            }}
+          />
+          <Tab 
+            icon={<LockOpenIcon />} 
+            label="解密" 
+            id="rsa-tab-1" 
+            aria-controls="rsa-tabpanel-1"
+            sx={{
+              '&.Mui-selected': {
+                color: '#424242',
+              },
+            }}
+          />
+          <Tab 
+            icon={<VpnKeyIcon />} 
+            label="密钥对生成" 
+            id="rsa-tab-2" 
+            aria-controls="rsa-tabpanel-2"
+            sx={{
+              '&.Mui-selected': {
+                color: '#424242',
+              },
+            }}
+          />
         </Tabs>
       </Box>
       
-      <Box sx={{ mb: 3 }}>
-        <FormControlLabel
-          control={
-            <Switch 
-              checked={showAdvancedOptions} 
-              onChange={(e) => setShowAdvancedOptions(e.target.checked)}
-              color="primary"
-            />
-          }
-          label="显示高级选项"
-        />
-      </Box>
       
-      {showAdvancedOptions && (
-        <Paper elevation={0} sx={{ p: 2, mb: 3, borderRadius: 2, bgcolor: 'background.default' }}>
-          <Grid container spacing={2} alignItems="center">
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="rsa-padding-label">填充方式</InputLabel>
-                <Select
-                  labelId="rsa-padding-label"
-                  id="rsa-padding"
-                  value={padding}
-                  label="填充方式"
-                  onChange={(e) => setPadding(e.target.value)}
-                >
-                  <MenuItem value="PKCS1">PKCS#1</MenuItem>
-                  <MenuItem value="OAEP">OAEP</MenuItem>
-                  <MenuItem value="NoPadding">无填充</MenuItem>
-                </Select>
-              </FormControl>
-            </Grid>
-            <Grid item xs={12} sm={6}>
-              <FormControl fullWidth size="small">
-                <InputLabel id="rsa-encoding-label">输出编码</InputLabel>
+      
+      
+      <TabPanel value={tabValue} index={0}>
+        {/* <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}> */}
+          <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+            <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+            RSA公钥加密
+          </Typography>
+          
+          <TextField
+            label="待加密文本"
+            multiline
+            rows={4}
+            value={plaintext}
+            onChange={(e) => setPlaintext(e.target.value)}
+            placeholder="输入需要加密的明文"
+            fullWidth
+            variant="outlined"
+            margin="normal"
+            sx={{
+              mb: 1,
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#e0e0e0',
+                  borderWidth: '1px',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#9e9e9e',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#757575',
+                },
+              },
+              '& .MuiInputBase-input': {
+                fontWeight: 500,
+                color: '#000000',
+                fontSize: '1rem',
+              }
+            }}
+          />
+          
+          <TextField
+            label="RSA公钥"
+            multiline
+            rows={4}
+            value={publicKey}
+            onChange={(e) => setPublicKey(e.target.value)}
+            placeholder="输入RSA公钥"
+            fullWidth
+            variant="outlined"
+            margin="normal"
+            sx={{
+              mb: 1,
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#e0e0e0',
+                  borderWidth: '1px',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#9e9e9e',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#757575',
+                },
+              },
+              '& .MuiInputBase-input': {
+                fontWeight: 500,
+                color: '#000000',
+                fontSize: '1rem',
+                fontFamily: 'monospace',
+              }
+            }}
+            InputProps={{
+              endAdornment: generatedPublicKey ? (
+                <Tooltip title="使用生成的公钥">
+                  <IconButton 
+                    onClick={() => handleUseGeneratedKey('encrypt')}
+                    sx={{ position: 'absolute', right: 8, top: 8 }}
+                  >
+                    <ContentCopyIcon />
+                  </IconButton>
+                </Tooltip>
+              ) : null
+            }}
+          />
+          <TextField
+            label="模数"
+            multiline
+            rows={4}
+            value={encryptModulus}
+            onChange={(e) => setEncryptModulus(e.target.value)}
+            placeholder="输入模数"
+            fullWidth
+            variant="outlined"
+            margin="normal"
+            sx={{
+              mb: 3,
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#e0e0e0',
+                  borderWidth: '1px',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#9e9e9e',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#757575',
+                },
+              },
+              '& .MuiInputBase-input': {
+                fontWeight: 500,
+                color: '#000000',
+                fontSize: '1rem',
+                fontFamily: 'monospace',
+              }
+            }}
+          />
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12}>
+              <FormControl fullWidth variant="outlined" sx={{ border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                <InputLabel id="rsa-encoding-label">密文格式</InputLabel>
                 <Select
                   labelId="rsa-encoding-label"
                   id="rsa-encoding"
                   value={outputEncoding}
                   label="输出编码"
                   onChange={(e) => setOutputEncoding(e.target.value)}
+                  sx={{
+                    '& .MuiSelect-select': {
+                      fontWeight: 500,
+                      color: '#000000',
+                    },
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'transparent'
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'transparent'
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'transparent'
+                    },
+                    '& .MuiSvgIcon-root': {
+                      color: '#424242',
+                      fontSize: '1.5rem'
+                    }
+                  }}
                 >
                   <MenuItem value="base64">Base64</MenuItem>
                   <MenuItem value="hex">十六进制</MenuItem>
-                  <MenuItem value="binary">二进制</MenuItem>
                 </Select>
               </FormControl>
             </Grid>
           </Grid>
-        </Paper>
-      )}
-      
-      <TabPanel value={tabValue} index={0}>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Alert severity="info" sx={{ mb: 3 }}>
-              使用RSA公钥加密数据。请注意，RSA1024每次最多只能加密约117字节(取决于填充方式)。对于更长的数据，应使用混合加密方案。
-            </Alert>
-          </Grid>
-          
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="待加密文本"
-              multiline
-              rows={4}
-              value={plaintext}
-              onChange={(e) => setPlaintext(e.target.value)}
-              variant="outlined"
-              placeholder="输入需要加密的明文"
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="RSA公钥"
-              multiline
-              rows={4}
-              value={publicKey}
-              onChange={(e) => setPublicKey(e.target.value)}
-              variant="outlined"
-              placeholder="输入PEM格式的RSA公钥"
-              InputProps={{
-                endAdornment: generatedPublicKey ? (
-                  <Tooltip title="使用生成的公钥">
-                    <IconButton 
-                      onClick={() => handleUseGeneratedKey('encrypt')}
-                      sx={{ position: 'absolute', right: 8, top: 8 }}
-                    >
-                      <ContentCopyIcon />
-                    </IconButton>
-                  </Tooltip>
-                ) : null
-              }}
-            />
-          </Grid>
-          
-          <Grid item xs={12}>
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              onClick={handleEncrypt}
-              disabled={encryptLoading}
-              startIcon={encryptLoading ? <CircularProgress size={20} /> : <LockIcon />}
-              sx={{ py: 1.5 }}
-            >
-              {encryptLoading ? '加密中...' : '使用公钥加密数据'}
-            </Button>
-          </Grid>
+
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={handleEncrypt}
+            disabled={encryptLoading}
+            startIcon={encryptLoading ? <CircularProgress size={20} /> : <LockIcon />}
+            sx={{
+              mb: 3,
+              bgcolor: '#616161',
+              '&:hover': {
+                bgcolor: '#424242',
+              },
+              py: 1.5,
+              fontSize: '1rem',
+              fontWeight: 'bold'
+            }}
+          >
+            {encryptLoading ? '加密中...' : '使用公钥加密数据'}
+          </Button>
           
           {encryptError && (
-            <Grid item xs={12}>
-              <Alert severity="error">{encryptError}</Alert>
-            </Grid>
+            <Alert severity="error" sx={{ mb: 3 }}>{encryptError}</Alert>
           )}
+
+          <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
+            <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
+            加密结果 ({outputEncoding === 'base64' ? 'Base64' : outputEncoding === 'hex' ? '十六进制' : '二进制'})
+          </Typography>
           
-          {encryptedText && (
-            <Grid item xs={12}>
-              <Paper variant="outlined" sx={{ p: 2, position: 'relative' }}>
-                <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                  加密结果 ({outputEncoding === 'base64' ? 'Base64' : outputEncoding === 'hex' ? '十六进制' : '二进制'}):
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
-                    overflowWrap: 'break-word', 
-                    wordBreak: 'break-word',
-                    pr: 4 
-                  }}
-                >
-                  {encryptedText}
-                </Typography>
-                <Tooltip title="复制到剪贴板">
-                  <IconButton 
-                    sx={{ position: 'absolute', top: 8, right: 8 }}
-                    onClick={() => copyToClipboard(encryptedText)}
-                  >
-                    <ContentCopyIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Paper>
-            </Grid>
-          )}
-        </Grid>
+          {encryptedText ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
+            <TextField
+              multiline
+              rows={4}
+                value={encryptedText}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: { 
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+            />
+            <IconButton 
+              onClick={() => copyToClipboard(encryptedText)}
+              sx={{ 
+                position: 'absolute', 
+                right: 8, 
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+          </Box>
+        ) : (
+          <Box sx={{ 
+            display: 'flex', 
+            alignItems: 'center', 
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              RSA1024加密结果将显示在此处
+            </Typography>
+          </Box>
+        )}
+
+        {/* </Paper>   */}
       </TabPanel>
       
       <TabPanel value={tabValue} index={1}>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Alert severity="info" sx={{ mb: 3 }}>
-              使用RSA私钥解密数据。解密操作需要与加密时使用相同的填充方式和编码格式。
-            </Alert>
-          </Grid>
+        {/* <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}> */}
+          <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+            <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+            RSA私钥解密
+          </Typography>
           
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="待解密文本"
-              multiline
-              rows={4}
-              value={ciphertext}
-              onChange={(e) => setCiphertext(e.target.value)}
-              variant="outlined"
-              placeholder={`输入${outputEncoding === 'base64' ? 'Base64' : outputEncoding === 'hex' ? '十六进制' : '二进制'}编码的加密数据`}
-            />
-          </Grid>
-          <Grid item xs={12}>
-            <TextField
-              fullWidth
-              label="RSA私钥"
-              multiline
-              rows={4}
-              value={privateKey}
-              onChange={(e) => setPrivateKey(e.target.value)}
-              variant="outlined"
-              placeholder="输入PEM格式的RSA私钥"
-              InputProps={{
-                endAdornment: generatedPrivateKey ? (
-                  <Tooltip title="使用生成的私钥">
-                    <IconButton 
-                      onClick={() => handleUseGeneratedKey('decrypt')}
-                      sx={{ position: 'absolute', right: 8, top: 8 }}
-                    >
-                      <ContentCopyIcon />
-                    </IconButton>
-                  </Tooltip>
-                ) : null
-              }}
-            />
-          </Grid>
+          <TextField
+            label="待解密文本"
+            multiline
+            rows={4}
+            value={ciphertext}
+            onChange={(e) => setCiphertext(e.target.value)}
+            placeholder={`输入${outputEncoding === 'base64' ? 'Base64' : outputEncoding === 'hex' ? '十六进制' : '二进制'}编码的加密数据`}
+            fullWidth
+            variant="outlined"
+            margin="normal"
+            sx={{
+              mb: 1,
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#e0e0e0',
+                  borderWidth: '1px',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#9e9e9e',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#757575',
+                },
+              },
+              '& .MuiInputBase-input': {
+                fontWeight: 500,
+                color: '#000000',
+                fontSize: '1rem',
+                fontFamily: 'monospace',
+              }
+            }}
+          />
           
-          <Grid item xs={12}>
-            <Button
-              variant="contained"
-              color="primary"
-              fullWidth
-              onClick={handleDecrypt}
-              disabled={decryptLoading}
-              startIcon={decryptLoading ? <CircularProgress size={20} /> : <LockOpenIcon />}
-              sx={{ py: 1.5 }}
-            >
-              {decryptLoading ? '解密中...' : '使用私钥解密数据'}
-            </Button>
-          </Grid>
-          
-          {decryptError && (
-            <Grid item xs={12}>
-              <Alert severity="error">{decryptError}</Alert>
-            </Grid>
-          )}
-          
-          {decryptedText && (
-            <Grid item xs={12}>
-              <Paper variant="outlined" sx={{ p: 2, position: 'relative' }}>
-                <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                  解密结果:
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
-                    overflowWrap: 'break-word', 
-                    wordBreak: 'break-word',
-                    pr: 4
-                  }}
-                >
-                  {decryptedText}
-                </Typography>
-                <Tooltip title="复制到剪贴板">
+          <TextField
+            label="RSA私钥"
+            multiline
+            rows={4}
+            value={privateKey}
+            onChange={(e) => setPrivateKey(e.target.value)}
+            placeholder="输入RSA私钥"
+            fullWidth
+            variant="outlined"
+            margin="normal"
+            sx={{
+              mb: 1,
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#e0e0e0',
+                  borderWidth: '1px',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#9e9e9e',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#757575',
+                },
+              },
+              '& .MuiInputBase-input': {
+                fontWeight: 500,
+                color: '#000000',
+                fontSize: '1rem',
+                fontFamily: 'monospace',
+              }
+            }}
+            InputProps={{
+              endAdornment: generatedPrivateKey ? (
+                <Tooltip title="使用生成的私钥">
                   <IconButton 
-                    sx={{ position: 'absolute', top: 8, right: 8 }}
-                    onClick={() => copyToClipboard(decryptedText)}
+                    onClick={() => handleUseGeneratedKey('decrypt')}
+                    sx={{ position: 'absolute', right: 8, top: 8 }}
                   >
-                    <ContentCopyIcon fontSize="small" />
+                    <ContentCopyIcon />
                   </IconButton>
                 </Tooltip>
-              </Paper>
+              ) : null
+            }}
+          />
+          <TextField
+            label="模数"
+            multiline
+            rows={4}
+            value={decryptModulus}
+            onChange={(e) => setDecryptModulus(e.target.value)}
+            placeholder="输入模数"
+            fullWidth
+            variant="outlined"
+            margin="normal"
+            sx={{
+              mb: 3,
+              '& .MuiOutlinedInput-root': {
+                '& fieldset': {
+                  borderColor: '#e0e0e0',
+                  borderWidth: '1px',
+                },
+                '&:hover fieldset': {
+                  borderColor: '#9e9e9e',
+                },
+                '&.Mui-focused fieldset': {
+                  borderColor: '#757575',
+                },
+              },
+              '& .MuiInputBase-input': {
+                fontWeight: 500,
+                color: '#000000',
+                fontSize: '1rem',
+                fontFamily: 'monospace',
+              }
+            }}
+          />
+          <Grid container spacing={2} sx={{ mb: 3 }}>
+            <Grid item xs={12}>
+              <FormControl fullWidth variant="outlined" sx={{ border: '1px solid #e0e0e0', borderRadius: 1 }}>
+                <InputLabel id="rsa-encoding-label">密文格式</InputLabel>
+                <Select
+                  labelId="rsa-encoding-label"
+                  id="rsa-encoding"
+                  value={outputEncoding}
+                  label="输出编码"
+                  onChange={(e) => setOutputEncoding(e.target.value)}
+                  sx={{
+                    '& .MuiSelect-select': {
+                      fontWeight: 500,
+                      color: '#000000',
+                    },
+                    '& .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'transparent'
+                    },
+                    '&:hover .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'transparent'
+                    },
+                    '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                      borderColor: 'transparent'
+                    },
+                    '& .MuiSvgIcon-root': {
+                      color: '#424242',
+                      fontSize: '1.5rem'
+                    }
+                  }}
+                >
+                  <MenuItem value="base64">Base64</MenuItem>
+                  <MenuItem value="hex">十六进制</MenuItem>
+                </Select>
+              </FormControl>
             </Grid>
+          </Grid>
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={handleDecrypt}
+            disabled={decryptLoading}
+            startIcon={decryptLoading ? <CircularProgress size={20} /> : <LockOpenIcon />}
+            sx={{
+              mb: 3,
+              bgcolor: '#616161',
+              '&:hover': {
+                bgcolor: '#424242',
+              },
+              py: 1.5,
+              fontSize: '1rem',
+              fontWeight: 'bold'
+            }}
+          >
+            {decryptLoading ? '解密中...' : '使用私钥解密数据'}
+          </Button>
+          
+          {decryptError && (
+            <Alert severity="error" sx={{ mb: 3 }}>{decryptError}</Alert>
           )}
-        </Grid>
+        
+        
+        {/* <Paper elevation={1} sx={{ p: 3, position: 'relative', bgcolor: 'white' }}> */}
+          <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
+            <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
+            解密结果
+          </Typography>
+          
+        {decryptedText ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
+            <TextField
+              multiline
+              rows={4}
+              value={decryptedText}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: { 
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+            />
+            <IconButton 
+              onClick={() => copyToClipboard(decryptedText)}
+              sx={{ 
+                position: 'absolute', 
+                right: 8, 
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              RSA1024解密结果将显示在此处
+            </Typography>
+          </Box>
+        )}
+        {/* </Paper> */}
       </TabPanel>
       
       <TabPanel value={tabValue} index={2}>
-        <Grid container spacing={3}>
-          <Grid item xs={12}>
-            <Alert severity="info" sx={{ mb: 3 }}>
-              RSA密钥对由公钥和私钥组成。公钥用于加密数据，私钥用于解密。私钥必须妥善保管，而公钥可以安全地分享。
-              <br /><br />
-              <strong>注意:</strong> 现代应用中，RSA1024被认为安全性不足，对于敏感数据建议使用2048位或更高的密钥长度。
-            </Alert>
-          </Grid>
+        {/* <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}> */}
+          <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
+            <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+            RSA密钥对生成
+          </Typography>
           
-          <Grid item xs={12}>
-            <Button
-              variant="contained"
-              color="secondary"
-              fullWidth
-              onClick={handleGenerateKeyPair}
-              disabled={keyGenLoading}
-              startIcon={keyGenLoading ? <CircularProgress size={20} /> : <VpnKeyIcon />}
-              sx={{ py: 1.5 }}
-            >
-              {keyGenLoading ? '生成中...' : '生成RSA-1024密钥对'}
-            </Button>
-          </Grid>
+          <Button
+            variant="contained"
+            fullWidth
+            onClick={handleGenerateKeyPair}
+            disabled={keyGenLoading}
+            startIcon={keyGenLoading ? <CircularProgress size={20} /> : <VpnKeyIcon />}
+            sx={{
+              mb: 3,
+              bgcolor: '#616161',
+              '&:hover': {
+                bgcolor: '#424242',
+              },
+              py: 1.5,
+              fontSize: '1rem',
+              fontWeight: 'bold'
+            }}
+          >
+            {keyGenLoading ? '生成中...' : '生成RSA-1024密钥对'}
+          </Button>
           
           {keyGenError && (
-            <Grid item xs={12}>
-              <Alert severity="error">{keyGenError}</Alert>
-            </Grid>
+            <Alert severity="error" sx={{ mb: 3 }}>{keyGenError}</Alert>
           )}
-          
-          {generatedPublicKey && (
-            <Grid item xs={12}>
-              <Paper variant="outlined" sx={{ p: 2, position: 'relative', mb: 2 }}>
-                <Typography variant="subtitle2" gutterBottom color="text.secondary">
-                  RSA公钥 (PEM格式):
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
-                    overflowWrap: 'break-word', 
-                    wordBreak: 'break-word',
-                    fontFamily: 'monospace',
-                    pr: 4,
-                    fontSize: '0.75rem'
-                  }}
-                >
-                  {generatedPublicKey}
-                </Typography>
-                <Tooltip title="复制到剪贴板">
-                  <IconButton 
-                    sx={{ position: 'absolute', top: 8, right: 8 }}
-                    onClick={() => copyToClipboard(generatedPublicKey)}
-                  >
-                    <ContentCopyIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Paper>
-            </Grid>
-          )}
-          
-          {generatedPrivateKey && (
-            <Grid item xs={12}>
-              <Paper variant="outlined" sx={{ p: 2, position: 'relative', bgcolor: 'rgba(255, 0, 0, 0.03)' }}>
-                <Typography variant="subtitle2" gutterBottom color="error">
-                  RSA私钥 (PEM格式) - 请妥善保管:
-                </Typography>
-                <Divider sx={{ mb: 2 }} />
-                <Typography 
-                  variant="body2" 
-                  sx={{ 
-                    overflowWrap: 'break-word', 
-                    wordBreak: 'break-word',
-                    fontFamily: 'monospace',
-                    pr: 4,
-                    fontSize: '0.75rem'
-                  }}
-                >
-                  {generatedPrivateKey}
-                </Typography>
-                <Tooltip title="复制到剪贴板">
-                  <IconButton 
-                    sx={{ position: 'absolute', top: 8, right: 8 }}
-                    onClick={() => copyToClipboard(generatedPrivateKey)}
-                  >
-                    <ContentCopyIcon fontSize="small" />
-                  </IconButton>
-                </Tooltip>
-              </Paper>
-              
-              <Alert severity="warning" sx={{ mt: 2 }}>
-                警告: 私钥应当保密存储，不应泄露或在不安全的环境中传输。
-              </Alert>
-            </Grid>
-          )}
-        </Grid>
+        {/* </Paper> */}
+        
+        {generatedPublicKey ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
+            <TextField
+              label="生成的公钥"
+              multiline
+              rows={4}
+              value={generatedPublicKey}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: { 
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+              sx={{ mb: 2 }}
+            />
+            <IconButton 
+              onClick={() => copyToClipboard(generatedPublicKey)}
+              sx={{ 
+                position: 'absolute', 
+                right: 8, 
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+            mt: 2
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              RSA公钥将显示在此处
+            </Typography>
+          </Box>
+        )}
+
+        {generatedPrivateKey ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
+            <TextField
+              multiline
+              rows={4}
+              label="生成的私钥"
+              value={generatedPrivateKey}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: {
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+              sx={{ mb: 2 }}
+            />
+            <IconButton
+              onClick={() => copyToClipboard(generatedPrivateKey)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+            mt: 2
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              RSA私钥将显示在此处
+            </Typography>
+          </Box>
+        )}
+
+        {generatedModulus ? (
+          <Box sx={{ position: 'relative', mt: 2 }}>
+            <TextField
+              multiline
+              rows={4}
+              label="生成的模数"
+              value={generatedModulus}
+              variant="outlined"
+              fullWidth
+              InputProps={{
+                readOnly: true,
+                sx: {
+                  fontFamily: 'monospace',
+                  bgcolor: '#f5f5f5',
+                  wordBreak: 'break-all',
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: '#e0e0e0',
+                    borderWidth: '1px',
+                  },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
+                }
+              }}
+              sx={{ mb: 2 }}
+            />
+            <IconButton
+              onClick={() => copyToClipboard(generatedModulus)}
+              sx={{
+                position: 'absolute',
+                right: 8,
+                top: 8,
+                color: '#616161'
+              }}
+            >
+              <ContentCopyIcon />
+            </IconButton>
+
+          </Box>
+        ) : (
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            bgcolor: '#f5f5f5',
+            border: '1px solid #e0e0e0',
+            borderRadius: 1,
+            p: 8,
+            mt: 2
+          }}>
+            <Typography variant="body1" color="text.secondary" align="center">
+              RSA模数将显示在此处
+            </Typography>
+          </Box>
+        )}
       </TabPanel>
+      
+      <Snackbar
+        open={showCopiedSnackbar}
+        autoHideDuration={2000}
+        message="已复制到剪贴板"
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      />
     </Box>
   );
 };
 
-export default NewRSA1024Crypto; 
+export default NewRSA1024Crypto;

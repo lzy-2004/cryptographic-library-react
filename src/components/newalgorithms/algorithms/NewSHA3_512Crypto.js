@@ -3,7 +3,7 @@ import {
   Box, 
   Button, 
   TextField, 
-  Alert, 
+  Grid, 
   Typography, 
   Paper, 
   FormControl, 
@@ -16,11 +16,10 @@ import {
 } from '@mui/material';
 import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import InfoIcon from '@mui/icons-material/Info';
-import LockIcon from '@mui/icons-material/Lock';
-
+import { sha3_512Hash } from '../../../api/sha3_512';
 const NewSHA3_512Crypto = () => {
   const [inputText, setInputText] = useState('');
-  const [encoding, setEncoding] = useState('utf8');
+  const [outputFormat, setOutputFormat] = useState("hex");
   const [result, setResult] = useState('');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -31,34 +30,43 @@ const NewSHA3_512Crypto = () => {
     setError('');
   };
 
-  const handleEncodingChange = (e) => {
-    setEncoding(e.target.value);
+  const handleOutputFormatChange = (e) => {
+    setOutputFormat(e.target.value);
   };
 
   const generateHash = () => {
-    if (!inputText) {
-      setError('请输入要哈希的文本');
-      return;
-    }
-
     setLoading(true);
     setError('');
     
-    // 模拟API调用
-    setTimeout(() => {
-      try {
-        // 模拟SHA3-512哈希结果 (128个十六进制字符)
-        const mockHash = Array.from({ length: 128 }, () => 
-          Math.floor(Math.random() * 16).toString(16)
-        ).join('');
+    sha3_512Hash(inputText, outputFormat)
+      .then(response => {
+        console.log('SHA3-512 API响应:', response);
+    
+        if (response && response.data) {
+          if (response.data.status !== undefined && response.data.status !== 0) {
+            throw new Error(response.data.message || '哈希计算失败');
+          }
+          // 如果有result字段，使用result字段的值
+          setResult(response.data.result || '');
+        } else {
+          throw new Error('哈希API返回了空数据');
+        }
+        setLoading(false);
+      })
+      .catch(err => {
+        console.error('SHA3-512 API请求错误:', err);
+        let errorMessage = '哈希计算失败';
         
-        setResult(mockHash);
+        // 尝试获取服务器返回的错误信息
+        if (err.response && err.response.data && err.response.data.message) {
+          errorMessage = err.response.data.message;
+        } else if (err.message) {
+          errorMessage = err.message;
+        }
+        
+        setError(errorMessage);
         setLoading(false);
-      } catch (err) {
-        setError('生成哈希时发生错误: ' + err.message);
-        setLoading(false);
-      }
-    }, 800);
+      });
   };
 
   const copyToClipboard = () => {
@@ -78,14 +86,13 @@ const NewSHA3_512Crypto = () => {
   };
 
   return (
-    <Box sx={{ width: '100%', height: '100%' }}>
-      <Paper 
-        elevation={1} 
-        sx={{ 
-          p: 3, 
-          mb: 3, 
-          borderLeft: '4px solid #e0e0e0',
-          bgcolor: '#f9f9f9'
+    <Box sx={{ width: '100%' }}>
+      <Paper
+        elevation={1}
+        sx={{
+          p: 3,
+          mb: 3,
+          bgcolor: 'white',
         }}
       >
         <Box sx={{ display: 'flex', alignItems: 'flex-start' }}>
@@ -104,21 +111,21 @@ const NewSHA3_512Crypto = () => {
 
       <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}>
         <Typography variant="h6" gutterBottom sx={{ mb: 3, display: 'flex', alignItems: 'center', color: '#424242' }}>
-          <LockIcon sx={{ mr: 1, color: '#616161' }} />
-          输入
+          <InfoIcon sx={{ mr: 1, color: '#616161' }} />
+          哈希设置
         </Typography>
-        
+
         <TextField
           label="输入文本"
           multiline
-          rows={5}
+          rows={8}
           value={inputText}
           onChange={handleInputChange}
           placeholder="在此输入要哈希的文本..."
           fullWidth
           variant="outlined"
           margin="normal"
-          sx={{ 
+          sx={{
             mb: 3,
             '& .MuiOutlinedInput-root': {
               '& fieldset': {
@@ -132,44 +139,82 @@ const NewSHA3_512Crypto = () => {
                 borderColor: '#757575',
               },
             },
+            '& .MuiInputBase-input': {
+              fontWeight: 500,
+              color: '#000000',
+              fontSize: '1rem',
+            }
           }}
-          error={!!error}
-          helperText={error}
+          error={!!error && error.includes('文本')}
+          helperText={error && error.includes('文本') ? error : ''}
         />
 
-        <FormControl fullWidth margin="normal" sx={{ mb: 3 }}>
-          <InputLabel id="encoding-label">输入编码</InputLabel>
-          <Select
-            labelId="encoding-label"
-            value={encoding}
-            onChange={handleEncodingChange}
-            label="输入编码"
-          >
-            <MenuItem value="utf8">UTF-8</MenuItem>
-            <MenuItem value="ascii">ASCII</MenuItem>
-            <MenuItem value="base64">Base64</MenuItem>
-            <MenuItem value="hex">Hex</MenuItem>
-          </Select>
-        </FormControl>
+        <Grid container spacing={2} sx={{ mb: 3 }}>
+          <Grid item xs={12}>
+            <FormControl fullWidth variant="outlined" sx={{ border: '1px solid #e0e0e0', borderRadius: 1 }}>
+              <InputLabel id="output-format-label">输出格式</InputLabel>
+              <Select
+                labelId="output-format-label"
+                value={outputFormat}
+                onChange={handleOutputFormatChange}
+                label="输出格式"
+                sx={{
+                  '& .MuiSelect-select': {
+                    fontWeight: 500,
+                    color: '#000000',
+                  },
+                  '& .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&:hover .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '&.Mui-focused .MuiOutlinedInput-notchedOutline': {
+                    borderColor: 'transparent'
+                  },
+                  '& .MuiSvgIcon-root': { 
+                    color: '#424242',
+                    fontSize: '1.5rem'
+                  }
+                }}
+                MenuProps={{
+                  PaperProps: {
+                    sx: {
+                      borderRadius: 1,
+                      boxShadow: '0 4px 8px rgba(0,0,0,0.1)'
+                    }
+                  }
+                }}
+              >
+                <MenuItem value="hex">十六进制</MenuItem>
+                <MenuItem value="base64">Base64</MenuItem>
+              </Select>
+            </FormControl>
+          </Grid>
+        </Grid>
 
-        <Button 
-          variant="contained" 
-          color="primary" 
+        <Button
+          variant="contained"
           onClick={generateHash}
           disabled={loading}
-          sx={{ 
+          fullWidth
+          size="large"
+          sx={{
             mb: 3,
             bgcolor: '#616161',
             '&:hover': {
               bgcolor: '#424242',
-            }
+            },
+            py: 1.5,
+            fontSize: '1rem',
+            fontWeight: 'bold'
           }}
         >
           {loading ? '哈希计算中...' : '计算SHA3-512哈希'}
         </Button>
 
         <Divider sx={{ my: 3 }} />
-        
+
         <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
           <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
           SHA3-512哈希结果
@@ -185,7 +230,7 @@ const NewSHA3_512Crypto = () => {
               fullWidth
               InputProps={{
                 readOnly: true,
-                sx: { 
+                sx: {
                   fontFamily: 'monospace',
                   bgcolor: '#f5f5f5',
                   wordBreak: 'break-all',
@@ -193,27 +238,32 @@ const NewSHA3_512Crypto = () => {
                     borderColor: '#e0e0e0',
                     borderWidth: '1px',
                   },
+                  '& textarea': {
+                    fontWeight: 500,
+                    color: '#000000',
+                    fontSize: '1rem',
+                  }
                 }
               }}
             />
-            <IconButton 
+            <IconButton
               onClick={copyToClipboard}
-              sx={{ 
-                position: 'absolute', 
-                right: 8, 
+              sx={{
+                position: 'absolute',
+                right: 8,
                 top: 8,
                 color: '#616161'
               }}
             >
               <ContentCopyIcon />
             </IconButton>
-            
+
             <Box sx={{ mt: 3 }}>
               <Typography variant="body2" color="text.secondary">
                 • SHA3-512哈希是512位（64字节）固定长度
               </Typography>
               <Typography variant="body2" color="text.secondary">
-                • 结果以128位十六进制字符表示
+                • 结果以{outputFormat === 'hex' ? '128位十六进制字符' : 'Base64编码'}表示
               </Typography>
               <Typography variant="body2" color="text.secondary">
                 • 比SHA-2系列提供更强的安全性
@@ -224,19 +274,25 @@ const NewSHA3_512Crypto = () => {
             </Box>
           </Box>
         ) : (
-          <Box sx={{ 
-            display: 'flex', 
-            alignItems: 'center', 
+          <Box sx={{
+            display: 'flex',
+            alignItems: 'center',
             justifyContent: 'center',
             bgcolor: '#f5f5f5',
             border: '1px solid #e0e0e0',
             borderRadius: 1,
-            p: 4
+            p: 8,
           }}>
             <Typography variant="body1" color="text.secondary" align="center">
-              计算后的SHA3-512哈希将显示在此处
+              SHA3-512哈希结果将显示在此处
             </Typography>
           </Box>
+        )}
+
+        {error && !error.includes('文本') && (
+          <Typography color="error" sx={{ mt: 2 }}>
+            {error}
+          </Typography>
         )}
       </Paper>
 
