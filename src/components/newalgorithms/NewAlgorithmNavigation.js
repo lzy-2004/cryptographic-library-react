@@ -14,7 +14,6 @@ import LockIcon from '@mui/icons-material/Lock';
 import PasswordIcon from '@mui/icons-material/Password';
 import VpnKeyIcon from '@mui/icons-material/VpnKey';
 import CodeIcon from '@mui/icons-material/Code';
-import KeyIcon from '@mui/icons-material/Key';
 import ArrowDropDownIcon from '@mui/icons-material/ArrowDropDown';
 import ArrowRightIcon from '@mui/icons-material/ArrowRight';
 
@@ -49,17 +48,12 @@ const NewAlgorithmNavigation = ({ selectedAlgorithm, onAlgorithmChange }) => {
     hash: {
       title: '哈希算法',
       icon: <PasswordIcon />,
-      algorithms: ['SHA1', 'SHA256', 'SHA3-512', 'RIPEMD160', 'PBKDF2','HMACSHA1','HMACSHA256']
+      algorithms: ['SHA1', 'SHA256', 'SHA3-512','MD5', 'RIPEMD160', 'PBKDF2','HMACSHA1','HMACSHA256']
     },
-    // hmac: {
-    //   title: 'HMAC算法',
-    //   icon: <KeyIcon />,
-    //   algorithms: ['HMACSHA1', 'HMACSHA256']
-    // },
     encoding: {
       title: '编码算法',
       icon: <CodeIcon />,
-      algorithms: ['Base64', 'UTF-8']
+      algorithms: ['Base64', 'UTF-8','HEX']
     }
   };
 

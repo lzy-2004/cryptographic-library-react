@@ -15,9 +15,9 @@ import ContentCopyIcon from '@mui/icons-material/ContentCopy';
 import InfoIcon from '@mui/icons-material/Info';
 import LockIcon from '@mui/icons-material/Lock';
 import LockOpenIcon from '@mui/icons-material/LockOpen';
-import { base64Encode, base64Decode } from '../../../api/base64';
+import { hexEncode, hexDecode } from '../../../api/hex';
 
-const NewBase64Crypto = () => {
+const NewHEXCrypto = () => {
   const [input, setInput] = useState("");
   const [mode, setMode] = useState(0); // 0=encode， 1=decode
   const [result, setResult] = useState("");
@@ -39,9 +39,9 @@ const NewBase64Crypto = () => {
       let response;
       
       if (mode === 0) {
-        response = await base64Encode(input);
+        response = await hexEncode(input);
       } else {
-        response = await base64Decode(input);
+        response = await hexDecode(input);
       }
       
       if (response && response.data) {
@@ -89,10 +89,10 @@ const NewBase64Crypto = () => {
           <InfoIcon sx={{ color: '#757575', mr: 2, mt: 0.5 }} />
           <Box>
             <Typography variant="body1" sx={{ mb: 1, fontWeight: 500, color: '#424242' }}>
-              Base64是一种编码方式，可以将二进制数据转换为可打印的ASCII字符。
+                HEX是一种编码方式，可以将二进制数据转换为十六进制字符。
             </Typography>
             <Typography variant="body2" color="text.secondary">
-              Base64常用于在HTTP传输、电子邮件等环境中传输二进制数据，通过将二进制数据转换为一组可打印字符来确保数据的完整性。
+                HEX常用于在调试、网络协议和区块链等场景中表示字节数据，通过将每个字节转换为两位十六进制字符来便于查看和传输。
             </Typography>
           </Box>
         </Box>
@@ -130,12 +130,12 @@ const NewBase64Crypto = () => {
       </Box>
       <Paper elevation={1} sx={{ p: 3, mb: 3, bgcolor: 'white' }}>
         <TextField
-          label={mode === 0 ? "输入文本" : "Base64字符串"}
+          label={mode === 0 ? "输入文本" : "十六进制字符串"}
           multiline
           rows={6}
           value={input}
           onChange={(e) => setInput(e.target.value)}
-          placeholder={mode === 0 ? "输入需要编码为Base64的文本" : "输入需要解码的Base64字符串"}
+          placeholder={mode === 0 ? "输入需要编码为十六进制的文本" : "输入需要解码的十六进制字符串"}
           fullWidth
           variant="outlined"
           margin="normal"
@@ -180,14 +180,14 @@ const NewBase64Crypto = () => {
             fontWeight: 'bold'
           }}
         >
-          {loading ? (mode === 0 ? '编码中...' : '解码中...') : (mode === 0 ? 'Base64编码' : 'Base64解码')}
+          {loading ? (mode === 0 ? '编码中...' : '解码中...') : (mode === 0 ? '十六进制编码' : '十六进制解码')}
         </Button>
 
         <Divider sx={{ my: 3 }} />
 
         <Typography variant="h6" gutterBottom sx={{ mb: 2, display: 'flex', alignItems: 'center', color: '#424242' }}>
           <ContentCopyIcon sx={{ mr: 1, color: '#616161' }} />
-          {mode === 0 ? 'Base64编码结果' : 'Base64解码结果'}
+          {mode === 0 ? '十六进制编码结果' : '十六进制解码结果'}
         </Typography>
 
         {result ? (
@@ -200,7 +200,7 @@ const NewBase64Crypto = () => {
               fullWidth
               InputProps={{
                 readOnly: true,
-                sx: {
+                sx: { 
                   fontFamily: mode === 0 ? 'monospace' : 'inherit',
                   bgcolor: '#f5f5f5',
                   wordBreak: 'break-all',
@@ -216,11 +216,11 @@ const NewBase64Crypto = () => {
                 }
               }}
             />
-            <IconButton
+            <IconButton 
               onClick={copyToClipboard}
-              sx={{
-                position: 'absolute',
-                right: 8,
+              sx={{ 
+                position: 'absolute', 
+                right: 8, 
                 top: 8,
                 color: '#616161'
               }}
@@ -229,19 +229,19 @@ const NewBase64Crypto = () => {
             </IconButton>
           </Box>
         ) : (
-          <Box sx={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'center',
-              bgcolor: '#f5f5f5',
-              border: '1px solid #e0e0e0',
-              borderRadius: 1,
-              p: 8,
-          }}>
-              <Typography variant="body1" color="text.secondary" align="center">
-                  {mode === 0 ? '编码结果将显示在此处' : '解码结果将显示在此处'}
-              </Typography>
-          </Box>
+            <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                bgcolor: '#f5f5f5',
+                border: '1px solid #e0e0e0',
+                borderRadius: 1,
+                p: 8,
+            }}>
+                <Typography variant="body1" color="text.secondary" align="center">
+                    {mode === 0 ? '编码结果将显示在此处' : '解码结果将显示在此处'}
+                </Typography>
+            </Box>
         )}
       </Paper>
 
@@ -255,4 +255,4 @@ const NewBase64Crypto = () => {
   );
 };
 
-export default NewBase64Crypto;
+export default NewHEXCrypto;

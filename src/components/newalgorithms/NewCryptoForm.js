@@ -1,10 +1,9 @@
 import React, { useState } from 'react';
-import { Box, Alert, Paper, Typography, Divider, Tabs, Tab, Button, Chip } from '@mui/material';
+import { Box, Alert, Paper, Typography, Tabs, Tab, Chip } from '@mui/material';
 import ArticleIcon from '@mui/icons-material/Article';
 import CodeIcon from '@mui/icons-material/Code';
 import SecurityIcon from '@mui/icons-material/Security';
 import SchoolIcon from '@mui/icons-material/School';
-import InfoIcon from '@mui/icons-material/Info';
 import PriorityHighIcon from '@mui/icons-material/PriorityHigh';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import NewAESCrypto from './algorithms/NewAESCrypto';
@@ -13,6 +12,7 @@ import NewRC6Crypto from './algorithms/NewRC6Crypto';
 import NewSHA1Crypto from './algorithms/NewSHA1Crypto';
 import NewSHA256Crypto from './algorithms/NewSHA256Crypto';
 import NewSHA3_512Crypto from './algorithms/NewSHA3_512Crypto';
+import NewMD5Crypto from './algorithms/NewMD5Crypto';
 import NewPBKDF2Crypto from './algorithms/NewPBKDF2Crypto';
 import NewRIPEMD160Crypto from './algorithms/NewRIPEMD160Crypto';
 import NewHMACSHA1Crypto from './algorithms/NewHMACSHA1Crypto';
@@ -23,6 +23,7 @@ import NewRSA1024Crypto from './algorithms/NewRSA1024Crypto';
 import NewRSASHA1Crypto from './algorithms/NewRSASHA1Crypto';
 import NewECC160Crypto from './algorithms/NewECC160Crypto';
 import NewECDSACrypto from './algorithms/NewECDSACrypto';
+import NewHEXCrypto from './algorithms/NewHEXCrypto';
 
 const algorithmInfo = {
   'AES': {
@@ -212,6 +213,37 @@ const algorithmInfo = {
     securityLevel: '极高',
     standardization: '美国联邦信息处理标准(FIPS 202)'
   },
+  'MD5': {
+    fullName: '消息摘要算法5 (Message Digest Algorithm 5)',
+    type: '哈希算法',
+    description: 'MD5生成128位的哈希值，广泛用于早期数据完整性校验。由于已被证实存在严重的碰撞漏洞，现不推荐用于任何安全相关场景。其前身包括MD4和MD2等算法。',
+    outputLength: '128位',
+    features: [
+      '生成128位（16字节）的哈希值',
+      '基于Merkle–Damgård结构设计',
+      '处理速度快、实现简单',
+      '支持任意长度输入消息'
+    ],
+    applications: [
+      '文件完整性验证（如下载校验）',
+      '数字签名系统中的非安全用途',
+      '数据库中密码存储的旧式加密方式',
+      '历史版本控制系统的快照标识'
+    ],
+    strengths: [
+      '计算效率高，适用于非安全场景',
+      '广泛部署于老旧系统',
+      '适用于快速数据指纹生成'
+    ],
+    weaknesses: [
+      '1996年发现理论碰撞攻击',
+      '2004年后可实际构造碰撞',
+      '不再适用于身份验证或加密协议',
+      '对长度扩展攻击敏感'
+    ],
+    securityLevel: '极低（不推荐用于安全应用）',
+    standardization: 'RFC 1321'
+  },
   'RIPEMD160': {
     fullName: 'RACE完整性原语评估消息摘要160',
     type: '哈希算法',
@@ -388,6 +420,33 @@ const algorithmInfo = {
     securityLevel: '不适用（非安全算法）',
     standardization: 'ISO 10646, RFC 3629, Unicode标准'
   },
+  'HEX':{
+    fullName: '十六进制编码',
+    type: '编码算法',
+    description: 'HEX是一种将二进制数据转换为十六进制字符的编码方式，常用于表示字节流。它将每个字节（8位）拆分为两个十六进制数字（0-9, A-F），从而将二进制数据转换为纯文本格式，便于显示和传输。',
+    features: [
+      '将每个字节编码为两个十六进制字符', 
+      '编码后数据大小增加一倍', 
+      '使用16个字符（0-9, A-F）表示数据', 
+      '无填充机制，数据长度固定' 
+    ],
+    applications: [
+      '校验和和哈希值表示（如MD5、SHA系列）', 
+      '网络协议中传输字节地址（如MAC地址）',
+      '调试时展示原始字节数据', 
+      '区块链交易ID和钱包地址表示'
+    ],
+    strengths: ['结构简单，易于解析', 
+      '支持所有字节值的准确表示', 
+      '广泛应用于底层系统和协议'
+    ],
+     weaknesses: ['编码后体积增大一倍', 
+      '不提供加密功能，仅是编码', 
+      '可读性较差，需工具辅助理解'
+    ], 
+    securityLevel: '不适用（非安全算法）',
+    standardization: 'IEEE, IETF等标准中常见'
+  },
   'RSA1024': {
     fullName: 'RSA-1024',
     type: '非对称加密算法',
@@ -551,6 +610,8 @@ const NewCryptoForm = ({ algorithm }) => {
         return <NewSHA256Crypto />;
       case 'SHA3-512':
         return <NewSHA3_512Crypto />;
+      case 'MD5':
+        return <NewMD5Crypto />;
       case 'PBKDF2':
         return <NewPBKDF2Crypto />;
       case 'RIPEMD160':
@@ -563,6 +624,8 @@ const NewCryptoForm = ({ algorithm }) => {
         return <NewBase64Crypto />;
       case 'UTF-8':
         return <NewUTF8Crypto />;
+      case 'HEX':
+        return <NewHEXCrypto />;
       default:
         return <Alert severity="error">未知算法: {algorithm}</Alert>;
     }
