@@ -1,12 +1,15 @@
-# 🔐 Cryptographic-library
+# 🔐 CipherGuard
 
 [![License: MIT](https://img.shields.io/badge/License-MIT-blue.svg)](https://opensource.org/licenses/MIT)
 ![React Version](https://img.shields.io/badge/React-19-61DAFB.svg)
 ![MUI Version](https://img.shields.io/badge/MUI-7-007FFF.svg)
 
-基于React构建的可视化密码学工具平台，集成15+种加密算法的加密/解密/签名验证功能，提供直观的Web界面操作。
+基于React和SpringBoot构建的可视化密码学工具平台，集成15+种加密算法的加密/解密/签名验证功能，提供直观的Web界面操作。  
+后端代码在：https://github.com/lzy-2004/cryptographic-library-spring.git
 
-![界面预览](./src/images/界面预览.png) 
+
+## 界面预览
+![界面预览](./src/images/界面预览2.png) 
 
 ## 🚀 功能特性
 
@@ -16,10 +19,10 @@
 |--------------|--------------------------------------------------------------------------|
 | 对称加密     | AES、SM4、RC6                                                           |
 | 非对称加密   | RSA-1024、ECC-160、ECDSA、RSA-SHA1                                                |
-| 哈希算法     | SHA1、SHA256、SHA3-512、RIPEMD160                                       |
+| 哈希算法     | SHA1、SHA256、SHA3-512、RIPEMD160、MD5                                      |
 | 消息认证码   | HMAC-SHA1、HMAC-SHA256                                                  |
 | 密钥派生     | PBKDF2                                                                  |
-| 编码转换     | Base64、UTF-8                                                           |
+| 编码转换     | Base64、UTF-8、Hex                                                           |
 
 ### 核心功能
 
